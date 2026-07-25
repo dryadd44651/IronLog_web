@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IronLog - Workout Tracker</title>
+    <link rel="stylesheet" href="app.css">
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+    <div class="app-container">
+        
+        <!-- App Header -->
+        <header>
+            <div class="header-top">
+                <div class="app-title">IronLog</div>
+                <div class="plan-selector-container">
+                    <select id="header-plan-select" class="plan-select">
+                        <!-- Plans filled dynamically -->
+                    </select>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Screen Views -->
+
+        <!-- Tab 0: Dashboard View -->
+        <div id="view-dashboard" class="view-content active-view">
+            <div class="section-title">Dashboard</div>
+            <div id="dashboard-cycle-container">
+                <!-- Dynamic Cycle card or Empty State -->
+            </div>
+            
+            <div id="dashboard-focus-container" style="display:none;">
+                <div class="focus-header-row">
+                    <div class="focus-title">This Week's Focus</div>
+                    <button class="skip-week-btn" onclick="handleSkipWeek()">Skip Week</button>
+                </div>
+                <div id="dashboard-focus-list">
+                    <!-- Dynamic Muscle groups focus list -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 1: Train View -->
+        <div id="view-train" class="view-content">
+            <div class="section-title">Train Log</div>
+            <div id="train-view-container">
+                <!-- Dynamic Train view elements -->
+            </div>
+        </div>
+
+        <!-- Tab 2: Exercises View (Library) -->
+        <div id="view-exercises" class="view-content">
+            <div class="section-title">Exercise Library</div>
+            <input type="text" id="exercise-search" class="exercise-search-input" placeholder="Search exercises..." oninput="handleExerciseSearch()">
+            
+            <div id="exercises-library-container">
+                <!-- Dynamic Muscle groups sections and exercises -->
+            </div>
+        </div>
+
+        <!-- Tab 3: Settings View -->
+        <div id="view-settings" class="view-content">
+            <div class="section-title">Settings</div>
+            
+            <div class="settings-section-title">Plans</div>
+            <div id="settings-plans-list" class="settings-list">
+                <!-- Dynamic list of plans -->
+            </div>
+            
+            <div class="settings-section-title">Muscle Groups & Weekly Intensity</div>
+            <div id="settings-groups-list" class="settings-list">
+                <!-- Dynamic list of muscle groups and intensity matrix rows -->
+            </div>
+            <div style="margin-top: 10px;">
+                <button class="btn-secondary" onclick="openAddGroupModal()" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px;">
+                    <i data-lucide="plus-circle"></i> Add Muscle Group
+                </button>
+            </div>
+            
+            <div class="settings-section-title">Backup & Restore</div>
+            <div class="settings-list">
+                <div class="settings-row-item" style="cursor:pointer;" onclick="handleExportData()">
+                    <span style="font-weight:600;"><i data-lucide="upload" style="vertical-align:middle; margin-right:8px; color:var(--color-accent)"></i> Export Workout Data</span>
+                    <i data-lucide="chevron-right" style="color:var(--color-text-muted)"></i>
+                </div>
+                <div class="settings-row-item" style="cursor:pointer;" onclick="triggerFileInput()">
+                    <span style="font-weight:600;"><i data-lucide="download" style="vertical-align:middle; margin-right:8px; color:var(--color-accent)"></i> Import Workout Data</span>
+                    <i data-lucide="chevron-right" style="color:var(--color-text-muted)"></i>
+                </div>
+                <input type="file" id="import-file-input" style="display:none;" accept=".json" onchange="handleImportData(event)">
+            </div>
+
+            <div class="settings-section-title">Developer Options</div>
+            <div class="settings-list">
+                <div class="settings-row-item" style="cursor:pointer; color:var(--color-danger);" onclick="openResetModal()">
+                    <span style="font-weight:600;"><i data-lucide="rotate-ccw" style="vertical-align:middle; margin-right:8px;"></i> Reset & Restore Seed Data</span>
+                    <i data-lucide="chevron-right" style="color:var(--color-text-muted)"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sticky Bottom Navigation Bar -->
+        <nav class="bottom-nav">
+            <button class="nav-tab active" onclick="switchTab(0)">
+                <i data-lucide="layout-grid"></i>
+                Dashboard
+            </button>
+            <button class="nav-tab" onclick="switchTab(1)">
+                <i data-lucide="dumbbell"></i>
+                Train
+            </button>
+            <button class="nav-tab" onclick="switchTab(2)">
+                <i data-lucide="list"></i>
+                Exercises
+            </button>
+            <button class="nav-tab" onclick="switchTab(3)">
+                <i data-lucide="settings"></i>
+                Settings
+            </button>
+        </nav>
+
+    </div>
+
+    <!-- Modals Overlay System -->
+    <div id="modal-overlay" class="modal-overlay" onclick="closeAllModals(event)">
+        
+        <!-- Modal 1: New Training Cycle -->
+        <div id="modal-new-cycle" class="modal-container" style="display:none;">
+            <div class="modal-title">New Training Cycle</div>
+            <div class="modal-form-group">
+                <label class="modal-form-label">Cycle Name</label>
+                <input type="text" id="input-cycle-name" class="modal-form-input" placeholder="e.g. Summer Strength Phase">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-secondary" style="flex:1;" onclick="closeModal()">Cancel</button>
+                <button class="btn-primary" style="flex:1;" onclick="submitNewCycle()">Create</button>
+            </div>
+        </div>
+
+        <!-- Modal 2: Add Exercise -->
+        <div id="modal-add-exercise" class="modal-container" style="display:none;">
+            <div class="modal-title">Add Exercise</div>
+            <div class="modal-form-group">
+                <label class="modal-form-label">Adding to</label>
+                <input type="text" id="label-add-exercise-group" class="modal-form-input" disabled style="background:rgba(255,255,255,0.02)">
+                <input type="hidden" id="input-add-exercise-group-id">
+            </div>
+            <div class="modal-form-group">
+                <label class="modal-form-label">Exercise Name</label>
+                <input type="text" id="input-exercise-name" class="modal-form-input" placeholder="e.g. Incline Bench Press">
+            </div>
+            <div class="modal-form-group">
+                <label class="modal-form-label">Personal Record / 1-Rep Max (lbs)</label>
+                <input type="number" id="input-exercise-pr" class="modal-form-input" placeholder="e.g. 150">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-secondary" style="flex:1;" onclick="closeModal()">Cancel</button>
+                <button class="btn-primary" style="flex:1;" onclick="submitAddExercise()">Add</button>
+            </div>
+        </div>
+
+        <!-- Modal 3: Edit Exercise (PR / Name) -->
+        <div id="modal-edit-exercise" class="modal-container" style="display:none;">
+            <div class="modal-title">Update Exercise PR</div>
+            <input type="hidden" id="input-edit-exercise-id">
+            <div class="modal-form-group">
+                <label class="modal-form-label">Exercise Name</label>
+                <input type="text" id="input-edit-exercise-name" class="modal-form-input">
+            </div>
+            <div class="modal-form-group">
+                <label class="modal-form-label">Personal Record / 1-Rep Max (lbs)</label>
+                <input type="number" id="input-edit-exercise-pr" class="modal-form-input">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-secondary" style="flex:1;" onclick="closeModal()">Cancel</button>
+                <button class="btn-primary" style="flex:1;" onclick="submitEditExercise()">Save</button>
+            </div>
+        </div>
+
+        <!-- Modal 4: Add Muscle Group -->
+        <div id="modal-add-group" class="modal-container" style="display:none;">
+            <div class="modal-title">Add Muscle Group</div>
+            <div class="modal-form-group">
+                <label class="modal-form-label">Muscle Group Name</label>
+                <input type="text" id="input-group-name" class="modal-form-input" placeholder="e.g. Forearms">
+            </div>
+            <div class="modal-form-group">
+                <label class="modal-form-label">Icon (Lucide Tag Name)</label>
+                <input type="text" id="input-group-icon" class="modal-form-input" placeholder="e.g. dumbbell, user, target" value="dumbbell">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-secondary" style="flex:1;" onclick="closeModal()">Cancel</button>
+                <button class="btn-primary" style="flex:1;" onclick="submitAddGroup()">Add</button>
+            </div>
+        </div>
+
+        <!-- Modal 5: Rename Plan -->
+        <div id="modal-rename-plan" class="modal-container" style="display:none;">
+            <div class="modal-title">Rename Plan</div>
+            <input type="hidden" id="input-rename-plan-id">
+            <div class="modal-form-group">
+                <label class="modal-form-label">Plan Name</label>
+                <input type="text" id="input-rename-plan-name" class="modal-form-input">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-secondary" style="flex:1;" onclick="closeModal()">Cancel</button>
+                <button class="btn-primary" style="flex:1;" onclick="submitRenamePlan()">Save</button>
+            </div>
+        </div>
+
+        <!-- Modal 6: Rename Group -->
+        <div id="modal-rename-group" class="modal-container" style="display:none;">
+            <div class="modal-title">Rename Muscle Group</div>
+            <input type="hidden" id="input-rename-group-id">
+            <div class="modal-form-group">
+                <label class="modal-form-label">Group Name</label>
+                <input type="text" id="input-rename-group-name" class="modal-form-input">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-secondary" style="flex:1;" onclick="closeModal()">Cancel</button>
+                <button class="btn-primary" style="flex:1;" onclick="submitRenameGroup()">Save</button>
+            </div>
+        </div>
+
+        <!-- Modal 7: Reset Confirmation -->
+        <div id="modal-reset" class="modal-container" style="display:none;">
+            <div class="modal-title" style="color:var(--color-danger);">Reset Database?</div>
+            <div class="empty-text">Are you sure you want to reset all workout history and restore seed data? This action cannot be undone.</div>
+            <div class="modal-buttons">
+                <button class="btn-secondary" style="flex:1;" onclick="closeModal()">Cancel</button>
+                <button class="btn-danger" style="flex:1;" onclick="submitResetAll()">Reset</button>
+            </div>
+        </div>
+
+        <!-- Modal 8: Delete Plan Confirmation -->
+        <div id="modal-delete-plan" class="modal-container" style="display:none;">
+            <div class="modal-title" style="color:var(--color-danger);">Delete Plan?</div>
+            <input type="hidden" id="input-delete-plan-id">
+            <div class="empty-text" id="label-delete-plan-text">This will remove this plan and its history.</div>
+            <div class="modal-buttons">
+                <button class="btn-secondary" style="flex:1;" onclick="closeModal()">Cancel</button>
+                <button class="btn-danger" style="flex:1;" onclick="submitDeletePlan()">Delete</button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Core Javascript files -->
+    <script src="app.js"></script>
+    <script>
+        // Controller & DOM Binding
+        let currentTab = 0;
+        let selectedMuscleGroupId = null;
+        let exerciseSearchText = '';
+        let storeObj;
+
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => {
+            storeObj = new AppStore();
+            
+            // Set initial selected muscle group
+            const enabledGroups = storeObj.muscleGroups.filter(g => g.isEnabled);
+            if (enabledGroups.length > 0) {
+                selectedMuscleGroupId = enabledGroups[0].id;
+            }
+
+            // Setup plan selector
+            const planSelect = document.getElementById('header-plan-select');
+            planSelect.addEventListener('change', (e) => {
+                storeObj.selectPlan(e.target.value);
+                
+                // Align selected muscle group if the new plan has different options
+                const groups = storeObj.muscleGroups.filter(g => g.isEnabled);
+                if (groups.length > 0 && !groups.some(g => g.id === selectedMuscleGroupId)) {
+                    selectedMuscleGroupId = groups[0].id;
+                }
+                
+                renderAll();
+            });
+
+            renderAll();
+        });
+
+        function renderAll() {
+            renderHeader();
+            renderDashboard();
+            renderTrain();
+            renderExercises();
+            renderSettings();
+            lucide.createIcons();
+        }
+
+        // Header view sync
+        function renderHeader() {
+            const planSelect = document.getElementById('header-plan-select');
+            planSelect.innerHTML = '';
+            
+            storeObj.plans.forEach(plan => {
+                const opt = document.createElement('option');
+                opt.value = plan.id;
+                opt.textContent = plan.name;
+                if (plan.id === storeObj.currentPlanId) {
+                    opt.selected = true;
+                }
+                planSelect.appendChild(opt);
+            });
+        }
+
+        // Tab switches
+        function switchTab(tabIndex) {
+            currentTab = tabIndex;
+            
+            // Set nav active state
+            const tabs = document.querySelectorAll('.nav-tab');
+            tabs.forEach((tab, index) => {
+                if (index === tabIndex) {
+                    tab.classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                }
+            });
+
+            // Set visible view
+            const views = [
+                document.getElementById('view-dashboard'),
+                document.getElementById('view-train'),
+                document.getElementById('view-exercises'),
+                document.getElementById('view-settings')
+            ];
+
+            views.forEach((view, index) => {
+                if (index === tabIndex) {
+                    view.classList.add('active-view');
+                } else {
+                    view.classList.remove('active-view');
+                }
+            });
+
+            renderAll();
+        }
+
+        // --- DASHBOARD RENDER ---
+        function renderDashboard() {
+            const cycleContainer = document.getElementById('dashboard-cycle-container');
+            const focusContainer = document.getElementById('dashboard-focus-container');
+            const focusList = document.getElementById('dashboard-focus-list');
+
+            const cycle = storeObj.activeCycle;
+            if (!cycle) {
+                focusContainer.style.display = 'none';
+                cycleContainer.innerHTML = `
+                    <div class="empty-state glass-card">
+                        <i data-lucide="calendar" class="empty-icon"></i>
+                        <div class="cycle-name" style="margin-bottom:8px">No Active Cycle</div>
+                        <div class="empty-text">Start a structured, periodized training program now.</div>
+                        <button class="btn-primary" onclick="openNewCycleModal()">Create Cycle</button>
+                    </div>
+                `;
+                return;
+            }
+
+            // Calculate progress
+            const enabledGroups = storeObj.muscleGroups.filter(g => g.isEnabled);
+            const doneCount = enabledGroups.filter(g => storeObj.isMuscleGroupCompleted(g.id, cycle.currentWeekIndex)).length;
+            const progressRatio = enabledGroups.length === 0 ? 0 : doneCount / enabledGroups.length;
+            const progressPercent = Math.round(progressRatio * 100);
+
+            // Cycle card
+            let cycleCardHtml = `
+                <div class="glass-card">
+                    <div class="cycle-card-header">
+                        <div class="cycle-name">${escapeHtml(cycle.name)}</div>
+                        <div class="cycle-week-badge ${cycle.isCompleted ? 'completed' : ''}">
+                            ${cycle.isCompleted ? 'Completed' : `Week ${cycle.currentWeekIndex + 1} of 4`}
+                        </div>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-header">
+                            <span class="progress-label">Current Week Progress</span>
+                            <span class="progress-val">${doneCount}/${enabledGroups.length} Muscle Groups Done</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill ${progressRatio === 1 ? 'completed' : ''}" style="width: ${progressPercent}%"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            if (cycle.isCompleted) {
+                focusContainer.style.display = 'none';
+                cycleCardHtml += `
+                    <div class="glass-card empty-state">
+                        <div class="trophy-wrap">
+                            <i data-lucide="trophy"></i>
+                        </div>
+                        <div class="cycle-name" style="margin-bottom:8px">Cycle Completed!</div>
+                        <div class="empty-text" style="margin-bottom:16px">Fantastic work! You have finished all 4 weeks of this physical periodization phase.</div>
+                        <button class="btn-primary" onclick="openNewCycleModal('Next Phase')">Start Next 4-Week Cycle</button>
+                    </div>
+                `;
+            } else {
+                focusContainer.style.display = 'block';
+                
+                // Focus checklist
+                let focusHtml = '';
+                enabledGroups.forEach(group => {
+                    const isCompleted = storeObj.isMuscleGroupCompleted(group.id, cycle.currentWeekIndex);
+                    const rawIntensity = storeObj.getIntensity(group, cycle.currentWeekIndex);
+                    const intensity = normalizeIntensity(rawIntensity);
+                    
+                    let intensityLabel = "Medium (Balanced)";
+                    let intensityIcon = "scale";
+                    if (intensity === 'light') { intensityLabel = "Light (Recovery)"; intensityIcon = "leaf"; }
+                    else if (intensity === 'heavy') { intensityLabel = "Heavy (Strength)"; intensityIcon = "zap"; }
+                    else if (intensity === 'deload') { intensityLabel = "Deload (Active Rest)"; intensityIcon = "battery-medium"; }
+
+                    const iconName = getLucideIcon(group.iconName);
+
+                    focusHtml += `
+                        <div class="checklist-item ${isCompleted ? 'done' : ''}" onclick="navigateToTrainGroup('${group.id}')">
+                            <div class="checklist-icon-wrap">
+                                <i data-lucide="${iconName}"></i>
+                            </div>
+                            <div class="checklist-info">
+                                <div class="checklist-name">${escapeHtml(group.name)}</div>
+                                <div class="intensity-badge ${intensity}">
+                                    <i data-lucide="${intensityIcon}"></i> ${intensityLabel}
+                                </div>
+                            </div>
+                            <div class="checklist-action-status">
+                                <span>${isCompleted ? 'Done' : 'Train'}</span>
+                                <i data-lucide="${isCompleted ? 'check-circle-2' : 'chevron-right'}"></i>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                focusList.innerHTML = focusHtml || '<div class="empty-text">No muscle groups enabled. Configure in Settings.</div>';
+            }
+
+            cycleContainer.innerHTML = cycleCardHtml;
+        }
+
+        function navigateToTrainGroup(groupId) {
+            selectedMuscleGroupId = groupId;
+            switchTab(1);
+        }
+
+        function handleSkipWeek() {
+            storeObj.forceAdvanceWeek();
+            renderAll();
+        }
+
+        // --- TRAIN RENDER ---
+        function renderTrain() {
+            const container = document.getElementById('train-view-container');
+            const cycle = storeObj.activeCycle;
+
+            if (!cycle) {
+                container.innerHTML = `
+                    <div class="empty-state glass-card">
+                        <i data-lucide="calendar" class="empty-icon"></i>
+                        <div class="cycle-name" style="margin-bottom:8px">No Active Cycle</div>
+                        <div class="empty-text">Configure or start your training cycle on the Dashboard.</div>
+                        <button class="btn-primary" onclick="switchTab(0)">Go to Dashboard</button>
+                    </div>
+                `;
+                return;
+            }
+
+            const enabledGroups = storeObj.muscleGroups.filter(g => g.isEnabled);
+            if (enabledGroups.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state glass-card">
+                        <i data-lucide="eye-off" class="empty-icon"></i>
+                        <div class="cycle-name" style="margin-bottom:8px">No Muscle Groups Enabled</div>
+                        <div class="empty-text">Go to Settings to select which muscle groups you want to track.</div>
+                        <button class="btn-primary" onclick="switchTab(3)">Go to Settings</button>
+                    </div>
+                `;
+                return;
+            }
+
+            // Week indicator banner
+            let html = `
+                <div class="train-header-banner">
+                    <i data-lucide="info"></i>
+                    <span>Week ${cycle.currentWeekIndex + 1} Target Formula Log</span>
+                </div>
+            `;
+
+            // Horizontal pill scroll tab bar
+            html += `<div class="horizontal-scroll-tabs">`;
+            enabledGroups.forEach(group => {
+                const isActive = (selectedMuscleGroupId === group.id) || (!selectedMuscleGroupId && enabledGroups[0].id === group.id);
+                if (isActive && !selectedMuscleGroupId) {
+                    selectedMuscleGroupId = group.id;
+                }
+                const isCompleted = storeObj.isMuscleGroupCompleted(group.id, cycle.currentWeekIndex);
+                const rawIntensity = storeObj.getIntensity(group, cycle.currentWeekIndex);
+                const intensity = normalizeIntensity(rawIntensity);
+                const iconName = getLucideIcon(group.iconName);
+
+                html += `
+                    <button class="pill-tab ${isActive ? 'active' : ''}" onclick="selectTrainGroup('${group.id}')">
+                        <i data-lucide="${iconName}"></i>
+                        <span>${escapeHtml(group.name)}</span>
+                        ${isCompleted ? '<i data-lucide="check-circle-2" style="color:var(--color-success)"></i>' : `<span class="pill-indicator" style="background-color: var(--color-intensity-${intensity})"></span>`}
+                    </button>
+                `;
+            });
+            html += `</div>`;
+
+            // Active Group train view details
+            const activeGroupId = selectedMuscleGroupId || enabledGroups[0].id;
+            const currentGroup = storeObj.muscleGroups.find(g => g.id === activeGroupId);
+            if (currentGroup) {
+                const rawIntensity = storeObj.getIntensity(currentGroup, cycle.currentWeekIndex);
+                const intensity = normalizeIntensity(rawIntensity);
+                
+                let intensityLabel = "Medium (Balanced)";
+                let intensityIcon = "scale";
+                if (intensity === 'light') { intensityLabel = "Light (Recovery)"; intensityIcon = "leaf"; }
+                else if (intensity === 'heavy') { intensityLabel = "Heavy (Strength)"; intensityIcon = "zap"; }
+                else if (intensity === 'deload') { intensityLabel = "Deload (Active Rest)"; intensityIcon = "battery-medium"; }
+
+                html += `
+                    <div class="target-intensity-card">
+                        <div class="intensity-circle" style="background: var(--color-intensity-${intensity}-bg); color: var(--color-intensity-${intensity})">
+                            <i data-lucide="${intensityIcon}"></i>
+                        </div>
+                        <div class="intensity-text-wrap">
+                            <span class="intensity-lbl">Target Intensity Tag</span>
+                            <span class="intensity-val-name" style="color: var(--color-intensity-${intensity})">${intensityLabel}</span>
+                        </div>
+                    </div>
+                `;
+
+                // Exercise logging cards
+                const currentExercises = storeObj.exercises.filter(e => e.muscleGroupId === currentGroup.id && storeObj.isExerciseEnabled(e.id));
+                if (currentExercises.length === 0) {
+                    html += `
+                        <div class="empty-state glass-card">
+                            <i data-lucide="info" class="empty-icon"></i>
+                            <div class="cycle-name" style="margin-bottom:8px">No Active Exercises</div>
+                            <div class="empty-text">Go to the Exercises tab and select/enable movements for ${escapeHtml(currentGroup.name)}.</div>
+                            <button class="btn-primary" onclick="switchTab(2)">Go to Exercises</button>
+                        </div>
+                    `;
+                } else {
+                    currentExercises.forEach(exercise => {
+                        const log = storeObj.getLog(exercise, cycle.currentWeekIndex);
+                        const target = storeObj.calculatedTarget(exercise, cycle.currentWeekIndex);
+
+                        html += `
+                            <div class="glass-card exercise-log-card">
+                                <div class="exercise-log-header">
+                                    <div style="display:flex; flex-direction:column; gap:2px;">
+                                        <div class="exercise-name-lbl">${escapeHtml(exercise.name)}</div>
+                                        <div class="intensity-badge ${intensity}">
+                                            <i data-lucide="${intensityIcon}"></i> ${intensityLabel}
+                                        </div>
+                                    </div>
+                                    <button class="exercise-log-status-btn ${log.isCompleted ? 'completed' : ''}" onclick="toggleExerciseLogCompletion('${exercise.id}', '${log.id}')">
+                                        <i data-lucide="${log.isCompleted ? 'check-circle-2' : 'circle'}"></i>
+                                    </button>
+                                </div>
+                                <div class="set-table">
+                                    <div class="set-row-header">
+                                        <div class="set-col-num">Set</div>
+                                        <div class="set-col-weight">Target Wt</div>
+                                        <div class="set-col-reps">Target Reps</div>
+                                        <div class="set-col-status">Done</div>
+                                    </div>
+                        `;
+
+                        log.sets.forEach((set, sIdx) => {
+                            html += `
+                                    <div class="set-row">
+                                        <div class="set-col-num">${sIdx + 1}</div>
+                                        <div class="set-col-weight">${target.weight}</div>
+                                        <div class="set-col-reps">${target.reps} reps</div>
+                                        <div class="set-col-status">
+                                            <button class="set-checkbox-btn ${set.isCompleted ? 'completed' : ''}" onclick="toggleSetCompletion('${exercise.id}', '${log.id}', ${sIdx})">
+                                                <i data-lucide="${set.isCompleted ? 'check-square' : 'square'}"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                            `;
+                        });
+
+                        html += `
+                                </div>
+                                <div class="set-action-row">
+                                    <button class="set-action-btn" onclick="handleAddSet('${exercise.id}', '${log.id}')">
+                                        <i data-lucide="plus-circle"></i> Add Set
+                                    </button>
+                                    ${log.sets.length > 1 ? `
+                                        <button class="set-action-btn btn-remove" onclick="handleRemoveSet('${exercise.id}', '${log.id}')">
+                                            <i data-lucide="minus-circle"></i> Remove Set
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    // Quick Complete entire muscle group
+                    html += `
+                        <button class="btn-primary" onclick="markAllGroupFinished('${currentGroup.id}')" style="background-color: var(--color-success); margin-bottom: 24px;">
+                            <i data-lucide="check-circle-2"></i> Mark All ${escapeHtml(currentGroup.name)} Finished
+                        </button>
+                    `;
+                }
+            }
+
+            container.innerHTML = html;
+        }
+
+        function selectTrainGroup(groupId) {
+            selectedMuscleGroupId = groupId;
+            renderAll();
+        }
+
+        function toggleExerciseLogCompletion(exerciseId, logId) {
+            const cycle = storeObj.activeCycle;
+            const ex = storeObj.exercises.find(e => e.id === exerciseId);
+            const log = storeObj.getLog(ex, cycle.currentWeekIndex);
+            
+            const newCompleted = !log.isCompleted;
+            log.isCompleted = newCompleted;
+            log.sets.forEach(s => s.isCompleted = newCompleted);
+            
+            storeObj.updateLog(log);
+            storeObj.checkAndAdvanceWeek();
+            renderAll();
+        }
+
+        function toggleSetCompletion(exerciseId, logId, setIndex) {
+            const cycle = storeObj.activeCycle;
+            const ex = storeObj.exercises.find(e => e.id === exerciseId);
+            const log = storeObj.getLog(ex, cycle.currentWeekIndex);
+            
+            log.sets[setIndex].isCompleted = !log.sets[setIndex].isCompleted;
+            log.isCompleted = log.sets.every(s => s.isCompleted);
+            
+            storeObj.updateLog(log);
+            storeObj.checkAndAdvanceWeek();
+            renderAll();
+        }
+
+        function handleAddSet(exerciseId, logId) {
+            const cycle = storeObj.activeCycle;
+            const ex = storeObj.exercises.find(e => e.id === exerciseId);
+            const log = storeObj.getLog(ex, cycle.currentWeekIndex);
+            
+            log.sets.push({ id: crypto.randomUUID(), isCompleted: false });
+            log.isCompleted = false;
+            
+            storeObj.updateLog(log);
+            renderAll();
+        }
+
+        function handleRemoveSet(exerciseId, logId) {
+            const cycle = storeObj.activeCycle;
+            const ex = storeObj.exercises.find(e => e.id === exerciseId);
+            const log = storeObj.getLog(ex, cycle.currentWeekIndex);
+            
+            if (log.sets.length > 1) {
+                log.sets.pop();
+                log.isCompleted = log.sets.every(s => s.isCompleted);
+                
+                storeObj.updateLog(log);
+                storeObj.checkAndAdvanceWeek();
+                renderAll();
+            }
+        }
+
+        function markAllGroupFinished(groupId) {
+            const cycle = storeObj.activeCycle;
+            const groupExercises = storeObj.exercises.filter(e => e.muscleGroupId === groupId && storeObj.isExerciseEnabled(e.id));
+            
+            groupExercises.forEach(ex => {
+                const log = storeObj.getLog(ex, cycle.currentWeekIndex);
+                log.isCompleted = true;
+                log.sets.forEach(s => s.isCompleted = true);
+                storeObj.updateLog(log);
+            });
+
+            storeObj.checkAndAdvanceWeek();
+            renderAll();
+        }
+
+
+        // --- EXERCISES RENDER (LIBRARY) ---
+        function renderExercises() {
+            const container = document.getElementById('exercises-library-container');
+            let html = '';
+
+            storeObj.muscleGroups.forEach(group => {
+                const filteredExercises = storeObj.exercises.filter(e => {
+                    const matchesGroup = e.muscleGroupId === group.id;
+                    const matchesSearch = exerciseSearchText === '' || e.name.toLowerCase().includes(exerciseSearchText.toLowerCase());
+                    return matchesGroup && matchesSearch;
+                });
+
+                const groupIcon = getLucideIcon(group.iconName);
+
+                html += `
+                    <div class="library-section">
+                        <div class="library-section-header">
+                            <div class="library-section-title">
+                                <i data-lucide="${groupIcon}" style="color:var(--color-accent)"></i>
+                                <span>${escapeHtml(group.name)}</span>
+                            </div>
+                            <button class="library-section-add-btn" onclick="openAddExerciseModal('${group.id}', '${escapeHtml(group.name)}')">
+                                <i data-lucide="plus-circle"></i>
+                            </button>
+                        </div>
+                `;
+
+                if (filteredExercises.length === 0) {
+                    html += `<div class="empty-text" style="padding-left: 28px;">No movements added</div>`;
+                } else {
+                    filteredExercises.forEach(exercise => {
+                        const isEnabled = storeObj.isExerciseEnabled(exercise.id);
+                        html += `
+                            <div class="exercise-library-item ${isEnabled ? '' : 'disabled'}">
+                                <button class="exercise-enable-toggle ${isEnabled ? 'enabled' : ''}" onclick="toggleExerciseEnabledInPlan('${exercise.id}', ${isEnabled})">
+                                    <i data-lucide="${isEnabled ? 'check-circle-2' : 'circle'}"></i>
+                                </button>
+                                <div class="exercise-details-row" onclick="openEditExerciseModal('${exercise.id}', '${escapeHtml(exercise.name)}', ${exercise.personalRecord})">
+                                    <div class="exercise-name">${escapeHtml(exercise.name)}</div>
+                                    <div style="display:flex; align-items:center; gap:8px;">
+                                        <div class="exercise-pr-display">
+                                            <span>PR: ${Math.round(exercise.personalRecord)} lbs</span>
+                                            <i data-lucide="edit"></i>
+                                        </div>
+                                        <button class="settings-action-icon-btn btn-delete" onclick="handleDeleteExercise(event, '${exercise.id}')" style="margin-left: 8px;">
+                                            <i data-lucide="trash-2"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+
+                html += `</div>`;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function handleExerciseSearch() {
+            exerciseSearchText = document.getElementById('exercise-search').value;
+            renderExercises();
+            lucide.createIcons();
+        }
+
+        function toggleExerciseEnabledInPlan(exerciseId, currentlyEnabled) {
+            storeObj.setExerciseEnabled(exerciseId, !currentlyEnabled);
+            renderAll();
+        }
+
+        function handleDeleteExercise(event, exerciseId) {
+            event.stopPropagation();
+            storeObj.deleteExercise(exerciseId);
+            renderAll();
+        }
+
+
+        // --- SETTINGS RENDER ---
+        function renderSettings() {
+            // Plans list
+            const plansContainer = document.getElementById('settings-plans-list');
+            let plansHtml = '';
+
+            storeObj.plans.forEach(plan => {
+                const isCurrent = plan.id === storeObj.currentPlanId;
+                plansHtml += `
+                    <div class="settings-row-item">
+                        <div class="settings-plan-item">
+                            <span class="settings-plan-name" style="${isCurrent ? 'font-weight:700;' : ''}">${escapeHtml(plan.name)}</span>
+                            ${isCurrent ? '<span class="settings-plan-status">Current</span>' : ''}
+                        </div>
+                        <div class="settings-plan-actions">
+                            ${!isCurrent ? `<button class="btn-secondary" onclick="selectPlanFromSettings('${plan.id}')" style="padding: 4px 8px; font-size:12px;">Select</button>` : ''}
+                            <button class="settings-action-icon-btn" onclick="openRenamePlanModal('${plan.id}', '${escapeHtml(plan.name)}')">
+                                <i data-lucide="edit"></i>
+                            </button>
+                            <button class="settings-action-icon-btn btn-delete" ${storeObj.plans.length <= 1 ? 'disabled style="opacity:0.3; cursor:not-allowed;"' : ''} onclick="openDeletePlanModal('${plan.id}', '${escapeHtml(plan.name)}')">
+                                <i data-lucide="trash-2"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            plansHtml += `
+                <div class="settings-row-item" style="cursor:pointer;" onclick="handleCreatePlanPrompt()">
+                    <span style="font-weight:600; color:var(--color-accent); display:flex; align-items:center; gap:8px;">
+                        <i data-lucide="plus-circle"></i> Create New Plan
+                    </span>
+                    <i data-lucide="chevron-right" style="color:var(--color-accent)"></i>
+                </div>
+            `;
+            plansContainer.innerHTML = plansHtml;
+
+            // Muscle groups settings matrix
+            const groupsContainer = document.getElementById('settings-groups-list');
+            let groupsHtml = '';
+
+            storeObj.muscleGroups.forEach(group => {
+                const groupIcon = getLucideIcon(group.iconName);
+
+                groupsHtml += `
+                    <div class="settings-group-card">
+                        <div class="settings-group-header">
+                            <div class="settings-group-info">
+                                <i data-lucide="${groupIcon}"></i>
+                                <span>${escapeHtml(group.name)}</span>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:12px;">
+                                <button class="settings-action-icon-btn" onclick="openRenameGroupModal('${group.id}', '${escapeHtml(group.name)}')">
+                                    <i data-lucide="edit"></i>
+                                </button>
+                                <button class="settings-action-icon-btn btn-delete" onclick="handleDeleteGroup('${group.id}')">
+                                    <i data-lucide="trash-2"></i>
+                                </button>
+                                <label class="switch">
+                                    <input type="checkbox" ${group.isEnabled ? 'checked' : ''} onchange="toggleMuscleGroupStatus('${group.id}', this.checked)">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="intensity-matrix-row" style="${group.isEnabled ? '' : 'opacity: 0.35; pointer-events: none;'}">
+                `;
+
+                for (let w = 0; w < 4; w++) {
+                    const rawIntensity = storeObj.getIntensity(group, w);
+                    const intensity = normalizeIntensity(rawIntensity);
+                    
+                    let shortName = "Med";
+                    if (intensity === 'light') shortName = "Light";
+                    else if (intensity === 'heavy') shortName = "Heavy";
+                    else if (intensity === 'deload') shortName = "Deload";
+
+                    groupsHtml += `
+                            <div class="intensity-matrix-cell ${intensity}" onclick="cycleWeeklyIntensity('${group.id}', ${w}, '${intensity}')">
+                                <span class="intensity-matrix-week-lbl">W${w + 1}</span>
+                                <span class="intensity-matrix-val-lbl ${intensity}">${shortName}</span>
+                            </div>
+                    `;
+                }
+
+                groupsHtml += `
+                        </div>
+                    </div>
+                `;
+            });
+
+            groupsContainer.innerHTML = groupsHtml;
+        }
+
+        function selectPlanFromSettings(planId) {
+            storeObj.selectPlan(planId);
+            
+            // Align selected muscle group
+            const groups = storeObj.muscleGroups.filter(g => g.isEnabled);
+            if (groups.length > 0 && !groups.some(g => g.id === selectedMuscleGroupId)) {
+                selectedMuscleGroupId = groups[0].id;
+            }
+
+            renderAll();
+        }
+
+        function handleCreatePlanPrompt() {
+            const defaultName = "Plan " + new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            storeObj.createPlan(defaultName);
+            renderAll();
+        }
+
+        function toggleMuscleGroupStatus(groupId, checked) {
+            storeObj.updateMuscleGroupStatus(groupId, checked);
+            renderAll();
+        }
+
+        function cycleWeeklyIntensity(groupId, weekIndex, currentShortVal) {
+            let nextIntensity = 'medium';
+            if (currentShortVal === 'light') nextIntensity = 'medium';
+            else if (currentShortVal === 'medium') nextIntensity = 'heavy';
+            else if (currentShortVal === 'heavy') nextIntensity = 'deload';
+            else if (currentShortVal === 'deload') nextIntensity = 'light';
+
+            storeObj.setIntensity(groupId, weekIndex, nextIntensity);
+            renderAll();
+        }
+
+        function handleDeleteGroup(groupId) {
+            if (confirm("Are you sure you want to delete this muscle group and all its exercise references?")) {
+                storeObj.removeMuscleGroup(groupId);
+                
+                // Readjust selection
+                const groups = storeObj.muscleGroups.filter(g => g.isEnabled);
+                if (groups.length > 0) {
+                    selectedMuscleGroupId = groups[0].id;
+                } else {
+                    selectedMuscleGroupId = null;
+                }
+                
+                renderAll();
+            }
+        }
+
+
+        // --- BACKUP & RESTORE ---
+        function handleExportData() {
+            const dataStr = storeObj.exportToJSON();
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "IronLogBackup.json";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        function triggerFileInput() {
+            document.getElementById('import-file-input').click();
+        }
+
+        function handleImportData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const contents = e.target.result;
+                const success = storeObj.importFromJSON(contents);
+                if (success) {
+                    alert("Import Successful! Your workout database has been successfully restored.");
+                    
+                    // Reset selected group
+                    const groups = storeObj.muscleGroups.filter(g => g.isEnabled);
+                    if (groups.length > 0) {
+                        selectedMuscleGroupId = groups[0].id;
+                    }
+                    
+                    renderAll();
+                } else {
+                    alert("Import Failed. The selected file is not a valid IronLog backup.");
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+
+        // --- MODAL UTILITIES ---
+        const overlay = document.getElementById('modal-overlay');
+
+        function openModal(modalId) {
+            overlay.classList.add('active');
+            
+            const containers = document.querySelectorAll('.modal-container');
+            containers.forEach(c => c.style.display = 'none');
+            
+            document.getElementById(modalId).style.display = 'block';
+        }
+
+        function closeModal() {
+            overlay.classList.remove('active');
+        }
+
+        function closeAllModals(event) {
+            if (event.target === overlay) {
+                closeModal();
+            }
+        }
+
+        // 1. Create Training Cycle Modal
+        function openNewCycleModal(prefill = '') {
+            document.getElementById('input-cycle-name').value = prefill || 'My Strength Cycle';
+            openModal('modal-new-cycle');
+        }
+
+        function submitNewCycle() {
+            const name = document.getElementById('input-cycle-name').value;
+            if (name.trim()) {
+                storeObj.startNewCycle(name);
+                closeModal();
+                renderAll();
+            }
+        }
+
+        // 2. Add Exercise Modal
+        function openAddExerciseModal(groupId, groupName) {
+            document.getElementById('input-add-exercise-group-id').value = groupId;
+            document.getElementById('label-add-exercise-group').value = groupName;
+            document.getElementById('input-exercise-name').value = '';
+            document.getElementById('input-exercise-pr').value = '100';
+            openModal('modal-add-exercise');
+        }
+
+        function submitAddExercise() {
+            const groupId = document.getElementById('input-add-exercise-group-id').value;
+            const name = document.getElementById('input-exercise-name').value;
+            const pr = parseFloat(document.getElementById('input-exercise-pr').value);
+
+            if (name.trim()) {
+                storeObj.addExercise(name, groupId, pr);
+                closeModal();
+                renderAll();
+            }
+        }
+
+        // 3. Edit Exercise Modal
+        function openEditExerciseModal(exerciseId, name, pr) {
+            document.getElementById('input-edit-exercise-id').value = exerciseId;
+            document.getElementById('input-edit-exercise-name').value = name;
+            document.getElementById('input-edit-exercise-pr').value = Math.round(pr);
+            openModal('modal-edit-exercise');
+        }
+
+        function submitEditExercise() {
+            const id = document.getElementById('input-edit-exercise-id').value;
+            const name = document.getElementById('input-edit-exercise-name').value;
+            const pr = parseFloat(document.getElementById('input-edit-exercise-pr').value);
+
+            if (name.trim()) {
+                const ex = storeObj.exercises.find(e => e.id === id);
+                if (ex) {
+                    const updated = { ...ex, name: name, personalRecord: pr };
+                    storeObj.updateExercise(updated);
+                    closeModal();
+                    renderAll();
+                }
+            }
+        }
+
+        // 4. Add Muscle Group Modal
+        function openAddGroupModal() {
+            document.getElementById('input-group-name').value = '';
+            document.getElementById('input-group-icon').value = 'dumbbell';
+            openModal('modal-add-group');
+        }
+
+        function submitAddGroup() {
+            const name = document.getElementById('input-group-name').value;
+            const icon = document.getElementById('input-group-icon').value;
+
+            if (name.trim()) {
+                storeObj.addMuscleGroup(name, icon);
+                closeModal();
+                renderAll();
+            }
+        }
+
+        // 5. Rename Plan Modal
+        function openRenamePlanModal(planId, name) {
+            document.getElementById('input-rename-plan-id').value = planId;
+            document.getElementById('input-rename-plan-name').value = name;
+            openModal('modal-rename-plan');
+        }
+
+        function submitRenamePlan() {
+            const id = document.getElementById('input-rename-plan-id').value;
+            const name = document.getElementById('input-rename-plan-name').value;
+
+            if (name.trim()) {
+                storeObj.renamePlan(id, name);
+                closeModal();
+                renderAll();
+            }
+        }
+
+        // 6. Rename Group Modal
+        function openRenameGroupModal(groupId, name) {
+            document.getElementById('input-rename-group-id').value = groupId;
+            document.getElementById('input-rename-group-name').value = name;
+            openModal('modal-rename-group');
+        }
+
+        function submitRenameGroup() {
+            const id = document.getElementById('input-rename-group-id').value;
+            const name = document.getElementById('input-rename-group-name').value;
+
+            if (name.trim()) {
+                storeObj.renameMuscleGroup(id, name);
+                closeModal();
+                renderAll();
+            }
+        }
+
+        // 7. Reset Modal
+        function openResetModal() {
+            openModal('modal-reset');
+        }
+
+        function submitResetAll() {
+            storeObj.resetAll();
+            closeModal();
+            renderAll();
+        }
+
+        // 8. Delete Plan Modal
+        function openDeletePlanModal(planId, name) {
+            document.getElementById('input-delete-plan-id').value = planId;
+            document.getElementById('label-delete-plan-text').textContent = `Are you sure you want to delete "${name}"? This will remove all its cycle records and logs.`;
+            openModal('modal-delete-plan');
+        }
+
+        function submitDeletePlan() {
+            const id = document.getElementById('input-delete-plan-id').value;
+            storeObj.deletePlan(id);
+            closeModal();
+            renderAll();
+        }
+
+        // Helpers
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
