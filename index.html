@@ -811,6 +811,24 @@
                     });
                 }
 
+                const cycle = storeObj.activeCycle;
+                const isDayCompleted = cycle ? storeObj.isDayCompleted(day, cycle.currentWeekIndex) : false;
+
+                let finishBtnHtml = '';
+                if (isDayCompleted) {
+                    finishBtnHtml = `
+                        <button class="btn-primary" onclick="handleRetrainDay('${day.id}')" style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px; background-color: var(--color-warning); padding: 8px 16px; font-size: 13px;">
+                            <i data-lucide="rotate-ccw"></i> Retrain
+                        </button>
+                    `;
+                } else {
+                    finishBtnHtml = `
+                        <button class="btn-primary" onclick="handleFinishDay('${day.id}')" style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px; background-color: var(--color-success); padding: 8px 16px; font-size: 13px;">
+                            <i data-lucide="check-circle-2"></i> Finish Day
+                        </button>
+                    `;
+                }
+
                 plannerHtml += `
                     <div class="glass-card" style="margin-bottom: 14px; padding:16px; background: rgba(255,255,255,0.02);">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -829,9 +847,7 @@
                             <button class="btn-secondary" onclick="openScheduleExercisesModal('${day.id}')" style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px;">
                                 <i data-lucide="list"></i> Manage
                             </button>
-                            <button class="btn-primary" onclick="handleFinishDay('${day.id}')" style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px; background-color: var(--color-success); padding: 8px 16px; font-size: 13px;">
-                                <i data-lucide="check-circle-2"></i> Finish Day
-                            </button>
+                            ${finishBtnHtml}
                         </div>
                     </div>
                 `;
@@ -854,6 +870,12 @@
             storeObj.markDayExercisesCompleted(dayId);
             renderAll();
         }
+
+        function handleRetrainDay(dayId) {
+            storeObj.markDayExercisesIncomplete(dayId);
+            renderAll();
+        }
+
 
         // Modal 9 Checklist generators
         function openScheduleExercisesModal(dayId) {
