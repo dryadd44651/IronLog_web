@@ -1112,3 +1112,17 @@ input:checked + .slider:before {
         text-shadow: 0 0 24px rgba(245, 158, 11, 0.6);
     }
 }
+
+/* Checkbox styling for Day routine planner */
+#settings-split-planner-days input[type="checkbox"] {
+    accent-color: var(--color-accent);
+    cursor: pointer;
+    width: 15px;
+    height: 15px;
+    border-radius: 4px;
+    border: 1px solid var(--color-border);
+    background-color: rgba(255, 255, 255, 0.05);
+    margin-right: 8px;
+    vertical-align: middle;
+}
+

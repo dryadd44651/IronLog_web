@@ -1,5 +1,5 @@
 // App State and Storage Management for IronLog Web
-// Ported from iOS SwiftUI ContentView.swift
+// Ported from iOS SwiftUI ContentView.swift and extended for Dedicated Customizable Daily Splits
 
 const APPLE_REF_DATE_MS = 978307200000; // Jan 1, 2001 00:00:00 UTC
 
@@ -15,7 +15,7 @@ const sfSymbolToLucide = {
     'figure.walk': 'footprints',
     'leaf.fill': 'leaf',
     'scalemass.fill': 'scale',
-    'bolt.shield.fill': 'zap', // or shield
+    'bolt.shield.fill': 'zap',
     'battery.50': 'battery-medium',
     'square.grid.2x2.fill': 'layout-grid',
     'gearshape.fill': 'settings',
@@ -85,13 +85,18 @@ class AppStore {
             this.planDataById[this.currentPlanId] = {
                 enabledExerciseIds: [],
                 activeCycle: null,
-                exerciseLogs: []
+                exerciseLogs: [],
+                daysCount: 3,
+                days: []
             };
         }
 
         if (this.globalMuscleGroups.length === 0 && this.globalExercises.length === 0) {
             this.seedInitialData();
         }
+
+        // Auto-run daily splits migration on initialization
+        this.migrateDaysForAllPlans();
     }
 
     get muscleGroups() {
@@ -137,7 +142,9 @@ class AppStore {
             return {
                 enabledExerciseIds: [],
                 activeCycle: null,
-                exerciseLogs: []
+                exerciseLogs: [],
+                daysCount: 3,
+                days: []
             };
         }
         return this.planDataById[this.currentPlanId];
@@ -149,7 +156,9 @@ class AppStore {
             this.planDataById[this.currentPlanId] = {
                 enabledExerciseIds: [],
                 activeCycle: null,
-                exerciseLogs: []
+                exerciseLogs: [],
+                daysCount: 3,
+                days: []
             };
         }
         mutate(this.planDataById[this.currentPlanId]);
@@ -170,9 +179,14 @@ class AppStore {
                 }
             } else {
                 data.enabledExerciseIds = data.enabledExerciseIds.filter(id => id !== exerciseId);
+                // Also remove from all days
+                if (data.days) {
+                    data.days.forEach(d => {
+                        d.exerciseIds = d.exerciseIds.filter(id => id !== exerciseId);
+                    });
+                }
             }
         });
-        this.saveData();
         this.checkAndAdvanceWeek();
     }
 
@@ -345,12 +359,18 @@ class AppStore {
         this.saveData();
     }
 
-    isMuscleGroupCompleted(muscleGroupId, weekIndex) {
-        if (!this.activeCycle) return false;
-        const groupExercises = this.exercises.filter(e => e.muscleGroupId === muscleGroupId && this.isExerciseEnabled(e.id));
-        if (groupExercises.length === 0) return true;
+    // --- CUSTOMIZABLE DAILY SPLITS ---
 
-        for (const exercise of groupExercises) {
+    isDayCompleted(day, weekIndex) {
+        if (!this.activeCycle) return false;
+        if (!day.exerciseIds || day.exerciseIds.length === 0) return true; // empty day is complete
+
+        for (const exId of day.exerciseIds) {
+            const exercise = this.exercises.find(e => e.id === exId);
+            if (!exercise) continue;
+            // Only check if exercise is enabled in this plan
+            if (!this.isExerciseEnabled(exId)) continue;
+
             const log = this.getLog(exercise, weekIndex);
             if (!log.isCompleted) {
                 return false;
@@ -363,10 +383,12 @@ class AppStore {
         const cycle = this.activeCycle;
         if (!cycle) return;
 
-        const enabledGroups = this.muscleGroups.filter(g => g.isEnabled);
-        const allDone = enabledGroups.every(g => this.isMuscleGroupCompleted(g.id, cycle.currentWeekIndex));
+        const days = this.currentPlanData.days || [];
+        if (days.length === 0) return;
 
-        if (allDone && enabledGroups.length > 0) {
+        const allDone = days.every(d => this.isDayCompleted(d, cycle.currentWeekIndex));
+
+        if (allDone) {
             if (cycle.currentWeekIndex < 3) {
                 cycle.currentWeekIndex += 1;
             } else {
@@ -388,6 +410,147 @@ class AppStore {
         this.activeCycle = cycle;
         this.saveData();
     }
+
+    setDaysCount(count) {
+        count = parseInt(count) || 3;
+        if (count < 1) count = 1;
+        if (count > 7) count = 7;
+
+        this.updateCurrentPlanData(data => {
+            if (!data.days) data.days = [];
+            data.daysCount = count;
+
+            if (count > data.days.length) {
+                // Add new empty days
+                for (let i = data.days.length; i < count; i++) {
+                    data.days.push({
+                        id: crypto.randomUUID(),
+                        name: `Day ${i + 1}`,
+                        exerciseIds: []
+                    });
+                }
+            } else if (count < data.days.length) {
+                // Truncate days and move their exercises back to Day 1
+                const exercisesToMove = [];
+                for (let i = count; i < data.days.length; i++) {
+                    exercisesToMove.push(...data.days[i].exerciseIds);
+                }
+                
+                data.days = data.days.slice(0, count);
+                
+                // Add unique moved exercises to Day 1
+                const day1 = data.days[0];
+                if (day1) {
+                    exercisesToMove.forEach(id => {
+                        if (!day1.exerciseIds.includes(id)) {
+                            day1.exerciseIds.push(id);
+                        }
+                    });
+                }
+            }
+        });
+        this.syncEnabledExercises();
+        this.saveData();
+    }
+
+    updateDayName(dayId, newName) {
+        const name = newName.trim();
+        if (!name) return;
+        this.updateCurrentPlanData(data => {
+            const day = data.days.find(d => d.id === dayId);
+            if (day) {
+                day.name = name;
+            }
+        });
+        this.saveData();
+    }
+
+    toggleExerciseInDay(dayId, exerciseId, assign) {
+        this.updateCurrentPlanData(data => {
+            const day = data.days.find(d => d.id === dayId);
+            if (day) {
+                if (assign) {
+                    if (!day.exerciseIds.includes(exerciseId)) {
+                        day.exerciseIds.push(exerciseId);
+                    }
+                } else {
+                    day.exerciseIds = day.exerciseIds.filter(id => id !== exerciseId);
+                }
+            }
+        });
+        this.syncEnabledExercises();
+        this.checkAndAdvanceWeek();
+        this.saveData();
+    }
+
+    syncEnabledExercises() {
+        this.updateCurrentPlanData(data => {
+            const allIds = new Set();
+            if (data.days) {
+                data.days.forEach(day => {
+                    day.exerciseIds.forEach(id => allIds.add(id));
+                });
+            }
+            data.enabledExerciseIds = Array.from(allIds);
+        });
+    }
+
+    migrateDaysForAllPlans() {
+        this.plans.forEach(plan => {
+            this.migrateDaysForPlan(plan.id);
+        });
+    }
+
+    migrateDaysForPlan(planId) {
+        if (!this.planDataById[planId]) {
+            this.planDataById[planId] = {
+                enabledExerciseIds: [],
+                activeCycle: null,
+                exerciseLogs: [],
+                daysCount: 3,
+                days: []
+            };
+        }
+        
+        const data = this.planDataById[planId];
+        if (!data.daysCount || !data.days || data.days.length === 0) {
+            data.daysCount = 3;
+            const enabledIds = data.enabledExerciseIds || [];
+            
+            // Smarter categorization based on muscle groups
+            const day1ExIds = [];
+            const day2ExIds = [];
+            const day3ExIds = [];
+            
+            this.globalExercises.forEach(ex => {
+                if (!enabledIds.includes(ex.id)) return;
+                
+                const group = this.globalMuscleGroups.find(g => g.id === ex.muscleGroupId);
+                const gName = group ? group.name.toLowerCase() : '';
+                
+                if (gName.includes('chest') || gName.includes('biceps') || gName.includes('core')) {
+                    day1ExIds.push(ex.id);
+                } else if (gName.includes('back') || gName.includes('triceps') || gName.includes('shoulder')) {
+                    day2ExIds.push(ex.id);
+                } else if (gName.includes('legs')) {
+                    day3ExIds.push(ex.id);
+                } else {
+                    day1ExIds.push(ex.id); // fallback
+                }
+            });
+
+            data.days = [
+                { id: crypto.randomUUID(), name: "Day 1 (Chest, Biceps, Core)", exerciseIds: day1ExIds },
+                { id: crypto.randomUUID(), name: "Day 2 (Back, Triceps, Shoulders)", exerciseIds: day2ExIds },
+                { id: crypto.randomUUID(), name: "Day 3 (Legs)", exerciseIds: day3ExIds }
+            ];
+            
+            this.syncEnabledExercises();
+            this.saveData();
+        }
+    }
+
+    // --- SEED EDITING INTERFACES ---
 
     updateMuscleGroupStatus(id, isEnabled) {
         const idx = this.muscleGroups.findIndex(g => g.id === id);
@@ -447,6 +610,11 @@ class AppStore {
             if (data.activeCycle) {
                 data.activeCycle.intensities = data.activeCycle.intensities.filter(i => i.muscleGroupId !== id);
             }
+            if (data.days) {
+                data.days.forEach(d => {
+                    d.exerciseIds = d.exerciseIds.filter(id => !toRemoveExerciseIds.includes(id));
+                });
+            }
         });
         this.checkAndAdvanceWeek();
     }
@@ -467,6 +635,11 @@ class AppStore {
         this.updateCurrentPlanData(data => {
             if (!data.enabledExerciseIds) data.enabledExerciseIds = [];
             data.enabledExerciseIds.push(newEx.id);
+            
+            // Add to first day by default
+            if (data.days && data.days.length > 0) {
+                data.days[0].exerciseIds.push(newEx.id);
+            }
         });
         this.saveData();
     }
@@ -482,10 +655,19 @@ class AppStore {
 
     deleteExercise(exerciseId) {
         this.exercises = this.exercises.filter(e => e.id !== exerciseId);
-        this.updateCurrentPlanData(data => {
-            data.exerciseLogs = (data.exerciseLogs || []).filter(l => l.exerciseId !== exerciseId);
-            data.enabledExerciseIds = (data.enabledExerciseIds || []).filter(id => id !== exerciseId);
+        this.plans.forEach(plan => {
+            const data = this.planDataById[plan.id];
+            if (data) {
+                data.enabledExerciseIds = (data.enabledExerciseIds || []).filter(id => id !== exerciseId);
+                data.exerciseLogs = (data.exerciseLogs || []).filter(l => l.exerciseId !== exerciseId);
+                if (data.days) {
+                    data.days.forEach(d => {
+                        d.exerciseIds = d.exerciseIds.filter(id => id !== exerciseId);
+                    });
+                }
+            }
         });
+        this.saveData();
     }
 
     createPlan(name) {
@@ -501,8 +683,11 @@ class AppStore {
         this.planDataById[newId] = {
             enabledExerciseIds: [...firstEnabled],
             activeCycle: null,
-            exerciseLogs: []
+            exerciseLogs: [],
+            daysCount: 3,
+            days: []
         };
+        this.migrateDaysForPlan(newId);
         this.selectPlan(newId);
     }
 
@@ -535,9 +720,12 @@ class AppStore {
             this.planDataById[id] = {
                 enabledExerciseIds: [...firstEnabled],
                 activeCycle: null,
-                exerciseLogs: []
+                exerciseLogs: [],
+                daysCount: 3,
+                days: []
             };
         }
+        this.migrateDaysForPlan(id);
         this.saveData();
     }
 
@@ -555,19 +743,20 @@ class AppStore {
         this.planDataById[defaultPlanId] = {
             enabledExerciseIds: [],
             activeCycle: null,
-            exerciseLogs: []
+            exerciseLogs: [],
+            daysCount: 3,
+            days: []
         };
 
         this.seedInitialData();
+        this.migrateDaysForAllPlans();
         this.saveData();
     }
 
     exportToJSON() {
-        // Prepare dictionary for plans by converting planDataById into alternating list format
-        // matching Swift: [key1, value1, key2, value2, ...]
+        // Convert planDataById into alternating list format matching Swift
         const flatPlanData = [];
         for (const [key, value] of Object.entries(this.planDataById)) {
-            // Convert Javascript structure back to iOS compatible cycle details
             const cycleCopy = value.activeCycle ? { ...value.activeCycle } : null;
             if (cycleCopy && cycleCopy.startDate instanceof Date) {
                 cycleCopy.startDate = (cycleCopy.startDate.getTime() - APPLE_REF_DATE_MS) / 1000;
@@ -577,7 +766,9 @@ class AppStore {
             flatPlanData.push({
                 enabledExerciseIds: value.enabledExerciseIds || [],
                 activeCycle: cycleCopy,
-                exerciseLogs: value.exerciseLogs || []
+                exerciseLogs: value.exerciseLogs || [],
+                daysCount: value.daysCount || 3,
+                days: value.days || []
             });
         }
 
@@ -603,17 +794,14 @@ class AppStore {
             this.globalMuscleGroups = decoded.globalMuscleGroups;
             this.globalExercises = decoded.globalExercises;
 
-            // Reconstruct planDataById
             this.planDataById = {};
             const flatPlanData = decoded.planDataById;
             
             if (Array.isArray(flatPlanData)) {
-                // Alternating array mapping
                 for (let i = 0; i < flatPlanData.length; i += 2) {
                     const key = flatPlanData[i];
                     const value = flatPlanData[i + 1];
                     if (key && value) {
-                        // Date conversion
                         if (value.activeCycle && typeof value.activeCycle.startDate === 'number') {
                             value.activeCycle.startDate = new Date(APPLE_REF_DATE_MS + value.activeCycle.startDate * 1000);
                         }
@@ -621,7 +809,6 @@ class AppStore {
                     }
                 }
             } else if (typeof flatPlanData === 'object' && flatPlanData !== null) {
-                // Standard object mapping
                 for (const [key, val] of Object.entries(flatPlanData)) {
                     if (val.activeCycle && typeof val.activeCycle.startDate === 'number') {
                         val.activeCycle.startDate = new Date(APPLE_REF_DATE_MS + val.activeCycle.startDate * 1000);
@@ -630,6 +817,8 @@ class AppStore {
                 }
             }
 
+            // Sync daily split parameters on imported files
+            this.migrateDaysForAllPlans();
             this.saveData();
             return true;
         } catch (e) {
@@ -639,8 +828,6 @@ class AppStore {
     }
 
     saveData() {
-        // Serialize to localStorage
-        // Note: For inner persistence we use standard structures, but we map dates and flat lists on JSON import/export
         const serializedData = {
             plans: this.plans,
             currentPlanId: this.currentPlanId,
@@ -661,7 +848,6 @@ class AppStore {
                 this.globalMuscleGroups = data.globalMuscleGroups || [];
                 this.globalExercises = data.globalExercises || [];
                 
-                // Parse date objects in planDataById
                 this.planDataById = data.planDataById || {};
                 for (const id in this.planDataById) {
                     const pData = this.planDataById[id];
@@ -675,7 +861,6 @@ class AppStore {
             console.error("Failed to load local storage:", e);
         }
 
-        // Try load legacy standard structures if any, or seed
         this.plans = [];
         this.currentPlanId = null;
         this.planDataById = {};
