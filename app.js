@@ -477,6 +477,25 @@ class AppStore {
         this.saveData();
     }
 
+    markDayExercisesCompleted(dayId) {
+        const cycle = this.activeCycle;
+        if (!cycle) return;
+        
+        const day = this.currentPlanData.days.find(d => d.id === dayId);
+        if (!day) return;
+
+        const dayExercises = day.exerciseIds.map(eid => this.exercises.find(e => e.id === eid)).filter(Boolean);
+        dayExercises.forEach(ex => {
+            const log = this.getLog(ex, cycle.currentWeekIndex);
+            log.isCompleted = true;
+            log.sets.forEach(s => s.isCompleted = true);
+            this.updateLog(log);
+        });
+
+        this.checkAndAdvanceWeek();
+    }
+
+
     toggleExerciseInDay(dayId, exerciseId, assign) {
         this.updateCurrentPlanData(data => {
             const day = data.days.find(d => d.id === dayId);

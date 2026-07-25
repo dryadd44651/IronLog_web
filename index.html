@@ -825,9 +825,12 @@
                             ${exercisePillsHtml}
                         </div>
                         
-                        <div>
-                            <button class="btn-secondary" onclick="openScheduleExercisesModal('${day.id}')" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px;">
-                                <i data-lucide="list"></i> Manage Exercises
+                        <div style="display:flex; gap:10px;">
+                            <button class="btn-secondary" onclick="openScheduleExercisesModal('${day.id}')" style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px;">
+                                <i data-lucide="list"></i> Manage
+                            </button>
+                            <button class="btn-primary" onclick="handleFinishDay('${day.id}')" style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px; background-color: var(--color-success); padding: 8px 16px; font-size: 13px;">
+                                <i data-lucide="check-circle-2"></i> Finish Day
                             </button>
                         </div>
                     </div>
@@ -844,6 +847,11 @@
 
         function handleDayRename(dayId, name) {
             storeObj.updateDayName(dayId, name);
+            renderAll();
+        }
+
+        function handleFinishDay(dayId) {
+            storeObj.markDayExercisesCompleted(dayId);
             renderAll();
         }
 
