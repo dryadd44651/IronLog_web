@@ -359,7 +359,7 @@ class AppStore {
         this.saveData();
     }
 
-    // --- CUSTOMIZABLE DAILY SPLITS ---
+    // --- DAILY SPLIT PLANNERS ---
 
     isDayCompleted(day, weekIndex) {
         if (!this.activeCycle) return false;
@@ -379,16 +379,15 @@ class AppStore {
         return true;
     }
 
+    // Restore original muscle group based week advancement check!
     checkAndAdvanceWeek() {
         const cycle = this.activeCycle;
         if (!cycle) return;
 
-        const days = this.currentPlanData.days || [];
-        if (days.length === 0) return;
+        const enabledGroups = this.muscleGroups.filter(g => g.isEnabled);
+        const allDone = enabledGroups.every(g => this.isMuscleGroupCompleted(g.id, cycle.currentWeekIndex));
 
-        const allDone = days.every(d => this.isDayCompleted(d, cycle.currentWeekIndex));
-
-        if (allDone) {
+        if (allDone && enabledGroups.length > 0) {
             if (cycle.currentWeekIndex < 3) {
                 cycle.currentWeekIndex += 1;
             } else {
@@ -465,6 +464,19 @@ class AppStore {
         this.saveData();
     }
 
+    // Set day exercises in bulk (for modal checklists)
+    setDayExercises(dayId, exerciseIds) {
+        this.updateCurrentPlanData(data => {
+            const day = data.days.find(d => d.id === dayId);
+            if (day) {
+                day.exerciseIds = exerciseIds || [];
+            }
+        });
+        this.syncEnabledExercises();
+        this.checkAndAdvanceWeek();
+        this.saveData();
+    }
+
     toggleExerciseInDay(dayId, exerciseId, assign) {
         this.updateCurrentPlanData(data => {
             const day = data.days.find(d => d.id === dayId);
@@ -517,7 +529,7 @@ class AppStore {
             data.daysCount = 3;
             const enabledIds = data.enabledExerciseIds || [];
             
-            // Smarter categorization based on muscle groups
+            // Group exercises logically
             const day1ExIds = [];
             const day2ExIds = [];
             const day3ExIds = [];
@@ -550,7 +562,21 @@ class AppStore {
         }
     }
 
-    // --- SEED EDITING INTERFACES ---
+    // --- ORIGINAL INTERFACES ---
+
+    isMuscleGroupCompleted(muscleGroupId, weekIndex) {
+        if (!this.activeCycle) return false;
+        const groupExercises = this.exercises.filter(e => e.muscleGroupId === muscleGroupId && this.isExerciseEnabled(e.id));
+        if (groupExercises.length === 0) return true;
+
+        for (const exercise of groupExercises) {
+            const log = this.getLog(exercise, weekIndex);
+            if (!log.isCompleted) {
+                return false;
+            }
+        }
+        return true;
+    }
 
     updateMuscleGroupStatus(id, isEnabled) {
         const idx = this.muscleGroups.findIndex(g => g.id === id);
@@ -754,7 +780,6 @@ class AppStore {
     }
 
     exportToJSON() {
-        // Convert planDataById into alternating list format matching Swift
         const flatPlanData = [];
         for (const [key, value] of Object.entries(this.planDataById)) {
             const cycleCopy = value.activeCycle ? { ...value.activeCycle } : null;
@@ -817,7 +842,6 @@ class AppStore {
                 }
             }
 
-            // Sync daily split parameters on imported files
             this.migrateDaysForAllPlans();
             this.saveData();
             return true;

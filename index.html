@@ -33,13 +33,24 @@
                 <!-- Dynamic Cycle card or Empty State -->
             </div>
             
-            <div id="dashboard-focus-container" style="display:none;">
+            <!-- Muscle group focus (Original) -->
+            <div id="dashboard-focus-container" style="display:none; margin-bottom: 24px;">
                 <div class="focus-header-row">
-                    <div class="focus-title">This Week's Focus</div>
+                    <div class="focus-title">This Week's Focus (Muscle Groups)</div>
                     <button class="skip-week-btn" onclick="handleSkipWeek()">Skip Week</button>
                 </div>
                 <div id="dashboard-focus-list">
-                    <!-- Dynamic Days focus checklist -->
+                    <!-- Dynamic Muscle groups focus list -->
+                </div>
+            </div>
+
+            <!-- Workout Day status focus (New) -->
+            <div id="dashboard-day-focus-container" style="display:none;">
+                <div class="focus-header-row">
+                    <div class="focus-title">Workout Split Status (Days)</div>
+                </div>
+                <div id="dashboard-day-focus-list">
+                    <!-- Dynamic workout days list -->
                 </div>
             </div>
         </div>
@@ -127,7 +138,7 @@
             </div>
         </div>
 
-        <!-- Sticky Bottom Navigation Bar (5 tabs now) -->
+        <!-- Sticky Bottom Navigation Bar (5 tabs) -->
         <nav class="bottom-nav">
             <button class="nav-tab active" onclick="switchTab(0)">
                 <i data-lucide="layout-grid"></i>
@@ -275,6 +286,21 @@
             </div>
         </div>
 
+        <!-- Modal 9: Schedule Exercises Modal (New assignment modal) -->
+        <div id="modal-schedule-exercises" class="modal-container" style="display:none; max-width:440px;">
+            <div class="modal-title" id="schedule-modal-title">Schedule Exercises</div>
+            <input type="hidden" id="schedule-day-id">
+            
+            <div id="schedule-exercises-list" style="max-height: 320px; overflow-y: auto; padding-right: 4px; margin-bottom: 16px;">
+                <!-- Dynamic checklist of exercises grouped by muscle group -->
+            </div>
+            
+            <div class="modal-buttons">
+                <button class="btn-secondary" style="flex:1;" onclick="closeModal()">Cancel</button>
+                <button class="btn-primary" style="flex:1;" onclick="submitScheduleExercises()">Save</button>
+            </div>
+        </div>
+
     </div>
 
     <!-- Core Javascript files -->
@@ -282,19 +308,18 @@
     <script>
         // Controller & DOM Binding
         let currentTab = 0;
-        let selectedDayId = null;
+        let selectedMuscleGroupId = null;
         let exerciseSearchText = '';
         let storeObj;
-        let openPlannerDayIds = new Set(); // Tracks collapsed planner accordions in Tab 2
 
         // Initialize App
         window.addEventListener('DOMContentLoaded', () => {
             storeObj = new AppStore();
             
-            // Set initial selected training day
-            const planDays = storeObj.currentPlanData.days || [];
-            if (planDays.length > 0) {
-                selectedDayId = planDays[0].id;
+            // Set initial selected muscle group (Original)
+            const enabledGroups = storeObj.muscleGroups.filter(g => g.isEnabled);
+            if (enabledGroups.length > 0) {
+                selectedMuscleGroupId = enabledGroups[0].id;
             }
 
             // Setup plan selector
@@ -302,10 +327,10 @@
             planSelect.addEventListener('change', (e) => {
                 storeObj.selectPlan(e.target.value);
                 
-                // Align selected day if the new plan has different days
-                const days = storeObj.currentPlanData.days || [];
-                if (days.length > 0 && !days.some(d => d.id === selectedDayId)) {
-                    selectedDayId = days[0].id;
+                // Align selected muscle group
+                const groups = storeObj.muscleGroups.filter(g => g.isEnabled);
+                if (groups.length > 0 && !groups.some(g => g.id === selectedMuscleGroupId)) {
+                    selectedMuscleGroupId = groups[0].id;
                 }
                 
                 renderAll();
@@ -339,7 +364,7 @@
             });
         }
 
-        // Tab switches (5 tabs now)
+        // Tab switches (5 tabs)
         function switchTab(tabIndex) {
             currentTab = tabIndex;
             
@@ -373,15 +398,19 @@
             renderAll();
         }
 
-        // --- DASHBOARD RENDER ---
+        // --- DASHBOARD RENDER (Dual Muscle Groups & Day Split lists) ---
         function renderDashboard() {
             const cycleContainer = document.getElementById('dashboard-cycle-container');
             const focusContainer = document.getElementById('dashboard-focus-container');
             const focusList = document.getElementById('dashboard-focus-list');
+            
+            const dayFocusContainer = document.getElementById('dashboard-day-focus-container');
+            const dayFocusList = document.getElementById('dashboard-day-focus-list');
 
             const cycle = storeObj.activeCycle;
             if (!cycle) {
                 focusContainer.style.display = 'none';
+                dayFocusContainer.style.display = 'none';
                 cycleContainer.innerHTML = `
                     <div class="empty-state glass-card">
                         <i data-lucide="calendar" class="empty-icon"></i>
@@ -393,10 +422,10 @@
                 return;
             }
 
-            // Calculate progress based on Days completed
-            const planDays = storeObj.currentPlanData.days || [];
-            const completedDaysCount = planDays.filter(d => storeObj.isDayCompleted(d, cycle.currentWeekIndex)).length;
-            const progressRatio = planDays.length === 0 ? 0 : completedDaysCount / planDays.length;
+            // Calculate progress based on Muscle Groups (original periodization progress metric)
+            const enabledGroups = storeObj.muscleGroups.filter(g => g.isEnabled);
+            const doneCount = enabledGroups.filter(g => storeObj.isMuscleGroupCompleted(g.id, cycle.currentWeekIndex)).length;
+            const progressRatio = enabledGroups.length === 0 ? 0 : doneCount / enabledGroups.length;
             const progressPercent = Math.round(progressRatio * 100);
 
             // Cycle progress card
@@ -411,7 +440,7 @@
                     <div class="progress-container">
                         <div class="progress-header">
                             <span class="progress-label">Current Week Progress</span>
-                            <span class="progress-val">${completedDaysCount}/${planDays.length} Days Done</span>
+                            <span class="progress-val">${doneCount}/${enabledGroups.length} Muscle Groups Done</span>
                         </div>
                         <div class="progress-bar-bg">
                             <div class="progress-bar-fill ${progressRatio === 1 ? 'completed' : ''}" style="width: ${progressPercent}%"></div>
@@ -422,6 +451,7 @@
 
             if (cycle.isCompleted) {
                 focusContainer.style.display = 'none';
+                dayFocusContainer.style.display = 'none';
                 cycleCardHtml += `
                     <div class="glass-card empty-state">
                         <div class="trophy-wrap">
@@ -434,27 +464,32 @@
                 `;
             } else {
                 focusContainer.style.display = 'block';
+                dayFocusContainer.style.display = 'block';
                 
-                // Focus checklist of Workout Days
+                // Focus Checklist 1: Muscle Groups Focus (Original)
                 let focusHtml = '';
-                planDays.forEach(day => {
-                    const isCompleted = storeObj.isDayCompleted(day, cycle.currentWeekIndex);
+                enabledGroups.forEach(group => {
+                    const isCompleted = storeObj.isMuscleGroupCompleted(group.id, cycle.currentWeekIndex);
+                    const rawIntensity = storeObj.getIntensity(group, cycle.currentWeekIndex);
+                    const intensity = normalizeIntensity(rawIntensity);
                     
-                    // Summarize exercises scheduled for this day
-                    const exercises = day.exerciseIds.map(eid => storeObj.exercises.find(e => e.id === eid)).filter(Boolean);
-                    const exerciseSummary = exercises.length > 0 
-                        ? exercises.slice(0, 3).map(e => e.name).join(', ') + (exercises.length > 3 ? '...' : '')
-                        : 'No exercises scheduled';
+                    let intensityLabel = "Medium (Balanced)";
+                    let intensityIcon = "scale";
+                    if (intensity === 'light') { intensityLabel = "Light (Recovery)"; intensityIcon = "leaf"; }
+                    else if (intensity === 'heavy') { intensityLabel = "Heavy (Strength)"; intensityIcon = "zap"; }
+                    else if (intensity === 'deload') { intensityLabel = "Deload (Active Rest)"; intensityIcon = "battery-medium"; }
+
+                    const iconName = getLucideIcon(group.iconName);
 
                     focusHtml += `
-                        <div class="checklist-item ${isCompleted ? 'done' : ''}" onclick="navigateToTrainDay('${day.id}')">
+                        <div class="checklist-item ${isCompleted ? 'done' : ''}" onclick="navigateToTrainGroup('${group.id}')">
                             <div class="checklist-icon-wrap">
-                                <i data-lucide="calendar"></i>
+                                <i data-lucide="${iconName}"></i>
                             </div>
                             <div class="checklist-info">
-                                <div class="checklist-name">${escapeHtml(day.name)}</div>
-                                <div class="empty-text" style="font-size:12px; margin-bottom:0; color:var(--color-text-secondary)">
-                                    ${escapeHtml(exerciseSummary)}
+                                <div class="checklist-name">${escapeHtml(group.name)}</div>
+                                <div class="intensity-badge ${intensity}">
+                                    <i data-lucide="${intensityIcon}"></i> ${intensityLabel}
                                 </div>
                             </div>
                             <div class="checklist-action-status">
@@ -464,15 +499,44 @@
                         </div>
                     `;
                 });
+                focusList.innerHTML = focusHtml || '<div class="empty-text">No muscle groups enabled. Configure in Settings.</div>';
 
-                focusList.innerHTML = focusHtml || '<div class="empty-text">No workout days configured. Setup split in Day tab.</div>';
+                // Focus Checklist 2: Workout Days Focus (New)
+                const planDays = storeObj.currentPlanData.days || [];
+                let dayFocusHtml = '';
+                planDays.forEach(day => {
+                    const isCompleted = storeObj.isDayCompleted(day, cycle.currentWeekIndex);
+                    const assignedExercises = day.exerciseIds.map(eid => storeObj.exercises.find(e => e.id === eid)).filter(Boolean);
+                    const exerciseSummary = assignedExercises.length > 0 
+                        ? assignedExercises.slice(0, 3).map(e => e.name).join(', ') + (assignedExercises.length > 3 ? '...' : '')
+                        : 'No exercises scheduled';
+
+                    dayFocusHtml += `
+                        <div class="checklist-item ${isCompleted ? 'done' : ''}" style="cursor:default;">
+                            <div class="checklist-icon-wrap" style="color:var(--color-warning); background:rgba(245,158,11,0.1);">
+                                <i data-lucide="calendar"></i>
+                            </div>
+                            <div class="checklist-info">
+                                <div class="checklist-name">${escapeHtml(day.name)}</div>
+                                <div class="empty-text" style="font-size:12px; margin-bottom:0; color:var(--color-text-secondary)">
+                                    ${escapeHtml(exerciseSummary)}
+                                </div>
+                            </div>
+                            <div class="checklist-action-status">
+                                <span>${isCompleted ? 'Done' : 'Incomplete'}</span>
+                                <i data-lucide="${isCompleted ? 'check-circle-2' : 'alert-circle'}"></i>
+                            </div>
+                        </div>
+                    `;
+                });
+                dayFocusList.innerHTML = dayFocusHtml || '<div class="empty-text">No workout days configured. Setup split in Day tab.</div>';
             }
 
             cycleContainer.innerHTML = cycleCardHtml;
         }
 
-        function navigateToTrainDay(dayId) {
-            selectedDayId = dayId;
+        function navigateToTrainGroup(groupId) {
+            selectedMuscleGroupId = groupId;
             switchTab(1); // Jump to Train Log tab
         }
 
@@ -481,7 +545,7 @@
             renderAll();
         }
 
-        // --- TRAIN RENDER (By scheduled Day) ---
+        // --- TRAIN RENDER (Original Muscle Group logging) ---
         function renderTrain() {
             const container = document.getElementById('train-view-container');
             const cycle = storeObj.activeCycle;
@@ -498,14 +562,14 @@
                 return;
             }
 
-            const planDays = storeObj.currentPlanData.days || [];
-            if (planDays.length === 0) {
+            const enabledGroups = storeObj.muscleGroups.filter(g => g.isEnabled);
+            if (enabledGroups.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state glass-card">
-                        <i data-lucide="calendar" class="empty-icon"></i>
-                        <div class="cycle-name" style="margin-bottom:8px">No Workout Days Configured</div>
-                        <div class="empty-text">Configure your split planner under the Day tab first.</div>
-                        <button class="btn-primary" onclick="switchTab(2)">Go to Day Planner</button>
+                        <i data-lucide="eye-off" class="empty-icon"></i>
+                        <div class="cycle-name" style="margin-bottom:8px">No Muscle Groups Enabled</div>
+                        <div class="empty-text">Go to Settings to select which muscle groups you want to track.</div>
+                        <button class="btn-primary" onclick="switchTab(4)">Go to Settings</button>
                     </div>
                 `;
                 return;
@@ -519,56 +583,68 @@
                 </div>
             `;
 
-            // Horizontal pill scroll tab bar for Days
+            // Horizontal pill scroll tab bar (Muscle Groups)
             html += `<div class="horizontal-scroll-tabs">`;
-            planDays.forEach(day => {
-                const isActive = (selectedDayId === day.id) || (!selectedDayId && planDays[0].id === day.id);
-                if (isActive && !selectedDayId) {
-                    selectedDayId = day.id;
+            enabledGroups.forEach(group => {
+                const isActive = (selectedMuscleGroupId === group.id) || (!selectedMuscleGroupId && enabledGroups[0].id === group.id);
+                if (isActive && !selectedMuscleGroupId) {
+                    selectedMuscleGroupId = group.id;
                 }
-                const isCompleted = storeObj.isDayCompleted(day, cycle.currentWeekIndex);
+                const isCompleted = storeObj.isMuscleGroupCompleted(group.id, cycle.currentWeekIndex);
+                const rawIntensity = storeObj.getIntensity(group, cycle.currentWeekIndex);
+                const intensity = normalizeIntensity(rawIntensity);
+                const iconName = getLucideIcon(group.iconName);
 
                 html += `
-                    <button class="pill-tab ${isActive ? 'active' : ''}" onclick="selectTrainDay('${day.id}')">
-                        <i data-lucide="calendar"></i>
-                        <span>${escapeHtml(day.name)}</span>
-                        ${isCompleted ? '<i data-lucide="check-circle-2" style="color:var(--color-success)"></i>' : '<span class="pill-indicator" style="background-color: var(--color-accent)"></span>'}
+                    <button class="pill-tab ${isActive ? 'active' : ''}" onclick="selectTrainGroup('${group.id}')">
+                        <i data-lucide="${iconName}"></i>
+                        <span>${escapeHtml(group.name)}</span>
+                        ${isCompleted ? '<i data-lucide="check-circle-2" style="color:var(--color-success)"></i>' : `<span class="pill-indicator" style="background-color: var(--color-intensity-${intensity})"></span>`}
                     </button>
                 `;
             });
             html += `</div>`;
 
-            // Active Day train view details
-            const activeDayId = selectedDayId || planDays[0].id;
-            const currentDay = planDays.find(d => d.id === activeDayId);
-            if (currentDay) {
-                // Get exercises scheduled for this day
-                const currentExercises = currentDay.exerciseIds.map(eid => storeObj.exercises.find(e => e.id === eid)).filter(Boolean);
+            // Active Group train view details
+            const activeGroupId = selectedMuscleGroupId || enabledGroups[0].id;
+            const currentGroup = storeObj.muscleGroups.find(g => g.id === activeGroupId);
+            if (currentGroup) {
+                const rawIntensity = storeObj.getIntensity(currentGroup, cycle.currentWeekIndex);
+                const intensity = normalizeIntensity(rawIntensity);
+                
+                let intensityLabel = "Medium (Balanced)";
+                let intensityIcon = "scale";
+                if (intensity === 'light') { intensityLabel = "Light (Recovery)"; intensityIcon = "leaf"; }
+                else if (intensity === 'heavy') { intensityLabel = "Heavy (Strength)"; intensityIcon = "zap"; }
+                else if (intensity === 'deload') { intensityLabel = "Deload (Active Rest)"; intensityIcon = "battery-medium"; }
 
+                html += `
+                    <div class="target-intensity-card">
+                        <div class="intensity-circle" style="background: var(--color-intensity-${intensity}-bg); color: var(--color-intensity-${intensity})">
+                            <i data-lucide="${intensityIcon}"></i>
+                        </div>
+                        <div class="intensity-text-wrap">
+                            <span class="intensity-lbl">Target Intensity Tag</span>
+                            <span class="intensity-val-name" style="color: var(--color-intensity-${intensity})">${intensityLabel}</span>
+                        </div>
+                    </div>
+                `;
+
+                // Exercise logging cards
+                const currentExercises = storeObj.exercises.filter(e => e.muscleGroupId === currentGroup.id && storeObj.isExerciseEnabled(e.id));
                 if (currentExercises.length === 0) {
                     html += `
                         <div class="empty-state glass-card">
                             <i data-lucide="info" class="empty-icon"></i>
-                            <div class="cycle-name" style="margin-bottom:8px">No Exercises Scheduled</div>
-                            <div class="empty-text">Go to the Day tab and assign exercises to ${escapeHtml(currentDay.name)}.</div>
-                            <button class="btn-primary" onclick="switchTab(2)">Go to Day Planner</button>
+                            <div class="cycle-name" style="margin-bottom:8px">No Active Exercises</div>
+                            <div class="empty-text">Go to the Exercises tab and select/enable movements for ${escapeHtml(currentGroup.name)}.</div>
+                            <button class="btn-primary" onclick="switchTab(3)">Go to Exercises</button>
                         </div>
                     `;
                 } else {
                     currentExercises.forEach(exercise => {
                         const log = storeObj.getLog(exercise, cycle.currentWeekIndex);
                         const target = storeObj.calculatedTarget(exercise, cycle.currentWeekIndex);
-
-                        // Find intensity details for the exercise's muscle group to color/tag
-                        const group = storeObj.muscleGroups.find(g => g.id === exercise.muscleGroupId);
-                        const rawIntensity = group ? storeObj.getIntensity(group, cycle.currentWeekIndex) : 'medium';
-                        const intensity = normalizeIntensity(rawIntensity);
-                        
-                        let intensityLabel = "Medium (Balanced)";
-                        let intensityIcon = "scale";
-                        if (intensity === 'light') { intensityLabel = "Light (Recovery)"; intensityIcon = "leaf"; }
-                        else if (intensity === 'heavy') { intensityLabel = "Heavy (Strength)"; intensityIcon = "zap"; }
-                        else if (intensity === 'deload') { intensityLabel = "Deload (Active Rest)"; intensityIcon = "battery-medium"; }
 
                         html += `
                             <div class="glass-card exercise-log-card">
@@ -623,10 +699,10 @@
                         `;
                     });
 
-                    // Quick Complete entire day
+                    // Quick Complete entire muscle group
                     html += `
-                        <button class="btn-primary" onclick="markAllDayFinished('${currentDay.id}')" style="background-color: var(--color-success); margin-bottom: 24px;">
-                            <i data-lucide="check-circle-2"></i> Mark Day Finished
+                        <button class="btn-primary" onclick="markAllGroupFinished('${currentGroup.id}')" style="background-color: var(--color-success); margin-bottom: 24px;">
+                            <i data-lucide="check-circle-2"></i> Mark All ${escapeHtml(currentGroup.name)} Finished
                         </button>
                     `;
                 }
@@ -635,8 +711,8 @@
             container.innerHTML = html;
         }
 
-        function selectTrainDay(dayId) {
-            selectedDayId = dayId;
+        function selectTrainGroup(groupId) {
+            selectedMuscleGroupId = groupId;
             renderAll();
         }
 
@@ -694,15 +770,11 @@
             }
         }
 
-        function markAllDayFinished(dayId) {
+        function markAllGroupFinished(groupId) {
             const cycle = storeObj.activeCycle;
-            const days = storeObj.currentPlanData.days || [];
-            const day = days.find(d => d.id === dayId);
-            if (!day) return;
-
-            const dayExercises = day.exerciseIds.map(eid => storeObj.exercises.find(e => e.id === eid)).filter(Boolean);
+            const groupExercises = storeObj.exercises.filter(e => e.muscleGroupId === groupId && storeObj.isExerciseEnabled(e.id));
             
-            dayExercises.forEach(ex => {
+            groupExercises.forEach(ex => {
                 const log = storeObj.getLog(ex, cycle.currentWeekIndex);
                 log.isCompleted = true;
                 log.sets.forEach(s => s.isCompleted = true);
@@ -725,50 +797,38 @@
 
             const daysList = data.days || [];
             daysList.forEach((day, index) => {
-                const isOpen = openPlannerDayIds.has(day.id);
-                
+                // Collect scheduled exercise names for this day
+                const assignedExercises = day.exerciseIds.map(eid => storeObj.exercises.find(e => e.id === eid)).filter(Boolean);
+                let exercisePillsHtml = '';
+
+                if (assignedExercises.length === 0) {
+                    exercisePillsHtml = `<div class="empty-text" style="margin-bottom:0; font-size:12px;">No exercises scheduled.</div>`;
+                } else {
+                    assignedExercises.forEach(ex => {
+                        exercisePillsHtml += `
+                            <span class="exercise-badge-pill">${escapeHtml(ex.name)}</span>
+                        `;
+                    });
+                }
+
                 plannerHtml += `
-                    <div class="glass-card" style="margin-bottom: 12px; padding:12px; background: rgba(255,255,255,0.02);">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div class="glass-card" style="margin-bottom: 14px; padding:16px; background: rgba(255,255,255,0.02);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                             <input type="text" class="modal-form-input" 
-                                   style="font-weight:700; background:none; border:none; border-bottom:1px dashed var(--color-border); padding:2px 4px; border-radius:0; width:75%; font-size:14px; color:var(--color-text-primary);" 
+                                   style="font-weight:700; background:none; border:none; border-bottom:1px dashed var(--color-border); padding:2px 4px; border-radius:0; width:75%; font-size:15px; color:var(--color-text-primary);" 
                                    value="${escapeHtml(day.name)}" 
                                    onblur="handleDayRename('${day.id}', this.value)"
                                    placeholder="Day Name (e.g. Push Day)">
-                            
-                            <button class="settings-action-icon-btn" onclick="togglePlannerExercises('${day.id}')" style="padding: 4px;">
-                                <i data-lucide="${isOpen ? 'chevron-up' : 'chevron-down'}"></i>
-                            </button>
                         </div>
                         
-                        <div id="planner-exercises-${day.id}" style="display:${isOpen ? 'block' : 'none'}; margin-top:12px; border-top:1px solid var(--color-border); padding-top:8px;">
-                            <div class="modal-form-label" style="margin-bottom: 8px;">Assign Scheduled Movements</div>
-                `;
-
-                // Render checklist of all exercises grouped by muscle groups
-                storeObj.muscleGroups.forEach(group => {
-                    const groupExercises = storeObj.exercises.filter(e => e.muscleGroupId === group.id);
-                    if (groupExercises.length === 0) return;
-
-                    plannerHtml += `
-                        <div style="margin-bottom: 8px;">
-                            <div style="font-size:11px; font-weight:700; color:var(--color-accent); margin-bottom:4px;">${escapeHtml(group.name)}</div>
-                    `;
-
-                    groupExercises.forEach(ex => {
-                        const isChecked = day.exerciseIds.includes(ex.id);
-                        plannerHtml += `
-                            <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:4px; cursor:pointer;">
-                                <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="handleExerciseToggleInPlanner('${day.id}', '${ex.id}', this.checked)">
-                                <span>${escapeHtml(ex.name)}</span>
-                            </label>
-                        `;
-                    });
-
-                    plannerHtml += `</div>`;
-                });
-
-                plannerHtml += `
+                        <div class="planner-pills-container" style="margin-bottom:14px;">
+                            ${exercisePillsHtml}
+                        </div>
+                        
+                        <div>
+                            <button class="btn-secondary" onclick="openScheduleExercisesModal('${day.id}')" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px;">
+                                <i data-lucide="list"></i> Manage Exercises
+                            </button>
                         </div>
                     </div>
                 `;
@@ -787,17 +847,57 @@
             renderAll();
         }
 
-        function togglePlannerExercises(dayId) {
-            if (openPlannerDayIds.has(dayId)) {
-                openPlannerDayIds.delete(dayId);
-            } else {
-                openPlannerDayIds.add(dayId);
-            }
-            renderAll();
+        // Modal 9 Checklist generators
+        function openScheduleExercisesModal(dayId) {
+            const day = storeObj.currentPlanData.days.find(d => d.id === dayId);
+            if (!day) return;
+
+            document.getElementById('schedule-day-id').value = dayId;
+            document.getElementById('schedule-modal-title').textContent = `Schedule Exercises - ${day.name}`;
+            
+            const container = document.getElementById('schedule-exercises-list');
+            let html = '';
+
+            storeObj.muscleGroups.forEach(group => {
+                const groupExercises = storeObj.exercises.filter(e => e.muscleGroupId === group.id);
+                if (groupExercises.length === 0) return;
+
+                html += `
+                    <div style="margin-bottom: 12px;">
+                        <div style="font-size:12px; font-weight:700; color:var(--color-accent); margin-bottom:6px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:2px;">
+                            ${escapeHtml(group.name)}
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:6px; padding-left:4px;">
+                `;
+
+                groupExercises.forEach(ex => {
+                    const isChecked = day.exerciseIds.includes(ex.id);
+                    html += `
+                        <label style="display:flex; align-items:center; gap:8px; font-size:13.5px; cursor:pointer; user-select:none; color:var(--color-text-primary);">
+                            <input type="checkbox" value="${ex.id}" ${isChecked ? 'checked' : ''} style="width:16px; height:16px; accent-color:var(--color-accent);">
+                            <span>${escapeHtml(ex.name)}</span>
+                        </label>
+                    `;
+                });
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+            openModal('modal-schedule-exercises');
         }
 
-        function handleExerciseToggleInPlanner(dayId, exerciseId, checked) {
-            storeObj.toggleExerciseInDay(dayId, exerciseId, checked);
+        function submitScheduleExercises() {
+            const dayId = document.getElementById('schedule-day-id').value;
+            const container = document.getElementById('schedule-exercises-list');
+            const checkedCheckboxes = container.querySelectorAll('input[type="checkbox"]:checked');
+            const selectedIds = Array.from(checkedCheckboxes).map(cb => cb.value);
+
+            storeObj.setDayExercises(dayId, selectedIds);
+            closeModal();
             renderAll();
         }
 
@@ -977,10 +1077,10 @@
         function selectPlanFromSettings(planId) {
             storeObj.selectPlan(planId);
             
-            // Align selected day
-            const days = storeObj.currentPlanData.days || [];
-            if (days.length > 0 && !days.some(d => d.id === selectedDayId)) {
-                selectedDayId = days[0].id;
+            // Align selected muscle group
+            const groups = storeObj.muscleGroups.filter(g => g.isEnabled);
+            if (groups.length > 0 && !groups.some(g => g.id === selectedMuscleGroupId)) {
+                selectedMuscleGroupId = groups[0].id;
             }
 
             renderAll();
@@ -1055,10 +1155,10 @@
                 if (success) {
                     alert("Import Successful! Your workout database has been successfully restored.");
                     
-                    // Reset selected day
-                    const days = storeObj.currentPlanData.days || [];
-                    if (days.length > 0) {
-                        selectedDayId = days[0].id;
+                    // Reset selected muscle group
+                    const groups = storeObj.muscleGroups.filter(g => g.isEnabled);
+                    if (groups.length > 0) {
+                        selectedMuscleGroupId = groups[0].id;
                     }
                     
                     renderAll();
@@ -1233,8 +1333,7 @@
             renderAll();
         }
 
-        // Helper: Call specific render function for tab 2
-        // To bind Tab 2 rendering into renderAll() automatically
+        // Hook Tab 2 (Routine Planner) render into global renderAll()
         const oldRenderAll = renderAll;
         renderAll = function() {
             oldRenderAll();
