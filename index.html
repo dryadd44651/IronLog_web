@@ -797,22 +797,83 @@
 
             const daysList = data.days || [];
             daysList.forEach((day, index) => {
-                // Collect scheduled exercise names for this day
                 const assignedExercises = day.exerciseIds.map(eid => storeObj.exercises.find(e => e.id === eid)).filter(Boolean);
-                let exercisePillsHtml = '';
+                const cycle = storeObj.activeCycle;
+                const isDayCompleted = cycle ? storeObj.isDayCompleted(day, cycle.currentWeekIndex) : false;
+
+                let exerciseLogsHtml = '';
 
                 if (assignedExercises.length === 0) {
-                    exercisePillsHtml = `<div class="empty-text" style="margin-bottom:0; font-size:12px;">No exercises scheduled.</div>`;
+                    exerciseLogsHtml = `<div class="empty-text" style="margin-bottom:12px; font-size:13px; color:var(--color-text-secondary);">No exercises scheduled.</div>`;
                 } else {
-                    assignedExercises.forEach(ex => {
-                        exercisePillsHtml += `
-                            <span class="exercise-badge-pill">${escapeHtml(ex.name)}</span>
+                    assignedExercises.forEach(exercise => {
+                        const log = storeObj.getLog(exercise, cycle ? cycle.currentWeekIndex : 0);
+                        const target = storeObj.calculatedTarget(exercise, cycle ? cycle.currentWeekIndex : 0);
+                        
+                        // Find muscle group details for intensity tags
+                        const group = storeObj.muscleGroups.find(g => g.id === exercise.muscleGroupId);
+                        const rawIntensity = group ? storeObj.getIntensity(group, cycle ? cycle.currentWeekIndex : 0) : 'medium';
+                        const intensity = normalizeIntensity(rawIntensity);
+                        
+                        let intensityLabel = "Medium (Balanced)";
+                        let intensityIcon = "scale";
+                        if (intensity === 'light') { intensityLabel = "Light (Recovery)"; intensityIcon = "leaf"; }
+                        else if (intensity === 'heavy') { intensityLabel = "Heavy (Strength)"; intensityIcon = "zap"; }
+                        else if (intensity === 'deload') { intensityLabel = "Deload (Active Rest)"; intensityIcon = "battery-medium"; }
+
+                        exerciseLogsHtml += `
+                            <div class="exercise-log-card" style="margin-bottom: 12px; background: rgba(255,255,255,0.015); border: 1px solid var(--color-border); border-radius: var(--border-radius-md); padding: 12px; text-align: left;">
+                                <div class="exercise-log-header" style="margin-bottom: 8px;">
+                                    <div style="display:flex; flex-direction:column; gap:1px;">
+                                        <div class="exercise-name-lbl" style="font-size:14px; font-weight:700;">${escapeHtml(exercise.name)}</div>
+                                        <div class="intensity-badge ${intensity}" style="font-size:10px; display:inline-flex; align-items:center; gap:3px;">
+                                            <i data-lucide="${intensityIcon}"></i> ${intensityLabel}
+                                        </div>
+                                    </div>
+                                    <button class="exercise-log-status-btn ${log.isCompleted ? 'completed' : ''}" onclick="toggleExerciseLogCompletion('${exercise.id}', '${log.id}')" style="font-size: 18px; padding:2px;">
+                                        <i data-lucide="${log.isCompleted ? 'check-circle-2' : 'circle'}"></i>
+                                    </button>
+                                </div>
+                                <div class="set-table" style="gap: 5px; margin-bottom: 10px;">
+                                    <div class="set-row-header" style="font-size: 10px; padding-bottom: 2px;">
+                                        <div class="set-col-num">Set</div>
+                                        <div class="set-col-weight">Target Wt</div>
+                                        <div class="set-col-reps">Target Reps</div>
+                                        <div class="set-col-status">Done</div>
+                                    </div>
+                        `;
+
+                        log.sets.forEach((set, sIdx) => {
+                            exerciseLogsHtml += `
+                                    <div class="set-row" style="font-size: 13px; height:24px;">
+                                        <div class="set-col-num">${sIdx + 1}</div>
+                                        <div class="set-col-weight">${target.weight}</div>
+                                        <div class="set-col-reps">${target.reps} reps</div>
+                                        <div class="set-col-status">
+                                            <button class="set-checkbox-btn ${set.isCompleted ? 'completed' : ''}" onclick="toggleSetCompletion('${exercise.id}', '${log.id}', ${sIdx})" style="font-size:15px; padding:2px;">
+                                                <i data-lucide="${set.isCompleted ? 'check-square' : 'square'}"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                            `;
+                        });
+
+                        exerciseLogsHtml += `
+                                </div>
+                                <div class="set-action-row" style="margin-top: 6px;">
+                                    <button class="set-action-btn" onclick="handleAddSet('${exercise.id}', '${log.id}')" style="font-size:11px;">
+                                        <i data-lucide="plus-circle"></i> Add Set
+                                    </button>
+                                    ${log.sets.length > 1 ? `
+                                        <button class="set-action-btn btn-remove" onclick="handleRemoveSet('${exercise.id}', '${log.id}')" style="font-size:11px;">
+                                            <i data-lucide="minus-circle"></i> Remove Set
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </div>
                         `;
                     });
                 }
-
-                const cycle = storeObj.activeCycle;
-                const isDayCompleted = cycle ? storeObj.isDayCompleted(day, cycle.currentWeekIndex) : false;
 
                 let finishBtnHtml = '';
                 if (isDayCompleted) {
@@ -839,8 +900,8 @@
                                    placeholder="Day Name (e.g. Push Day)">
                         </div>
                         
-                        <div class="planner-pills-container" style="margin-bottom:14px;">
-                            ${exercisePillsHtml}
+                        <div class="planner-pills-container" style="margin-bottom:14px; flex-direction:column; align-items:stretch;">
+                            ${exerciseLogsHtml}
                         </div>
                         
                         <div style="display:flex; gap:10px;">
@@ -852,6 +913,7 @@
                     </div>
                 `;
             });
+
 
             plannerDaysContainer.innerHTML = plannerHtml;
         }
