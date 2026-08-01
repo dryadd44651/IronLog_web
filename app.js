@@ -861,6 +861,31 @@ class AppStore {
                 days: []
             };
         }
+        
+        // Auto-create active cycle if null so there is ALWAYS a cycle by default
+        const data = this.planDataById[id];
+        if (!data.activeCycle) {
+            const plan = this.plans.find(p => p.id === id);
+            const planName = plan ? plan.name : "Training";
+            
+            const intensities = [];
+            for (const group of this.globalMuscleGroups) {
+                intensities.push({ id: crypto.randomUUID(), muscleGroupId: group.id, weekIndex: 0, intensity: getIntensityRawValue('light') });
+                intensities.push({ id: crypto.randomUUID(), muscleGroupId: group.id, weekIndex: 1, intensity: getIntensityRawValue('medium') });
+                intensities.push({ id: crypto.randomUUID(), muscleGroupId: group.id, weekIndex: 2, intensity: getIntensityRawValue('heavy') });
+                intensities.push({ id: crypto.randomUUID(), muscleGroupId: group.id, weekIndex: 3, intensity: getIntensityRawValue('deload') });
+            }
+            
+            data.activeCycle = {
+                id: crypto.randomUUID(),
+                name: `${planName} Cycle`,
+                startDate: new Date(),
+                currentWeekIndex: 0,
+                intensities: intensities,
+                isCompleted: false
+            };
+        }
+        
         this.migrateDaysForPlan(id);
         this.saveData();
     }
