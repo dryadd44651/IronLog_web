@@ -790,6 +790,9 @@
         }
 
 
+        let expandedDayIds = new Set();
+        let isPlannerInitialized = false;
+
         // --- TAB 2: DAY ROUTINE PLANNER RENDER ---
         function renderRoutinePlanner() {
             const selectDays = document.getElementById('settings-split-days');
@@ -800,20 +803,37 @@
             let plannerHtml = '';
 
             const daysList = data.days || [];
+            
+            // Auto expand Day 1 on first load only
+            if (!isPlannerInitialized && daysList.length > 0) {
+                expandedDayIds.add(daysList[0].id);
+                isPlannerInitialized = true;
+            }
+
             daysList.forEach((day, index) => {
                 const assignedExercises = day.exerciseIds.map(eid => storeObj.exercises.find(e => e.id === eid)).filter(Boolean);
                 const cycle = storeObj.activeCycle;
                 const isDayCompleted = cycle ? storeObj.isDayCompleted(day, cycle.currentWeekIndex) : false;
+                const isExpanded = expandedDayIds.has(day.id);
 
                 let exerciseLogsHtml = '';
+                let exerciseSummaryHtml = '';
 
                 if (assignedExercises.length === 0) {
                     exerciseLogsHtml = `<div class="empty-text" style="margin-bottom:12px; font-size:13px; color:var(--color-text-secondary);">No exercises scheduled.</div>`;
+                    exerciseSummaryHtml = `<div class="empty-text" style="margin-bottom:10px; font-size:12px;">No exercises scheduled.</div>`;
                 } else {
+                    exerciseSummaryHtml = `<div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:12px;">`;
                     assignedExercises.forEach(exercise => {
                         const log = storeObj.getLog(exercise, cycle ? cycle.currentWeekIndex : 0);
                         const target = storeObj.calculatedTarget(exercise, cycle ? cycle.currentWeekIndex : 0);
                         
+                        exerciseSummaryHtml += `
+                            <span class="exercise-badge-pill" style="${log.isCompleted ? 'background:rgba(16,185,129,0.15); color:var(--color-success); border-color:rgba(16,185,129,0.3);' : ''}">
+                                ${escapeHtml(exercise.name)} ${log.isCompleted ? '✓' : ''}
+                            </span>
+                        `;
+
                         // Find muscle group details for intensity tags
                         const group = storeObj.muscleGroups.find(g => g.id === exercise.muscleGroupId);
                         const rawIntensity = group ? storeObj.getIntensity(group, cycle ? cycle.currentWeekIndex : 0) : 'medium';
@@ -880,6 +900,7 @@
                             </div>
                         `;
                     });
+                    exerciseSummaryHtml += `</div>`;
                 }
 
                 let finishBtnHtml = '';
@@ -899,15 +920,23 @@
 
                 plannerHtml += `
                     <div class="glass-card" style="margin-bottom: 14px; padding:16px; background: rgba(255,255,255,0.02);">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; cursor:pointer;" onclick="toggleExpandDay('${day.id}')">
                             <input type="text" class="modal-form-input" 
-                                   style="font-weight:700; background:none; border:none; border-bottom:1px dashed var(--color-border); padding:2px 4px; border-radius:0; width:75%; font-size:15px; color:var(--color-text-primary);" 
+                                   style="font-weight:700; background:none; border:none; border-bottom:1px dashed var(--color-border); padding:2px 4px; border-radius:0; width:65%; font-size:15px; color:var(--color-text-primary);" 
                                    value="${escapeHtml(day.name)}" 
+                                   onclick="event.stopPropagation()"
                                    onblur="handleDayRename('${day.id}', this.value)"
                                    placeholder="Day Name (e.g. Push Day)">
+                            
+                            <button class="settings-action-icon-btn" onclick="event.stopPropagation(); toggleExpandDay('${day.id}')" style="display:flex; align-items:center; gap:4px; font-size:12px; font-weight:600; color:var(--color-accent); background:rgba(59,130,246,0.1); padding:4px 10px; border-radius:14px; border:1px solid rgba(59,130,246,0.2);">
+                                <span>${isExpanded ? 'Collapse' : 'Expand'}</span>
+                                <i data-lucide="${isExpanded ? 'chevron-up' : 'chevron-down'}"></i>
+                            </button>
                         </div>
                         
-                        <div class="planner-pills-container" style="margin-bottom:14px; flex-direction:column; align-items:stretch;">
+                        ${!isExpanded ? exerciseSummaryHtml : ''}
+
+                        <div class="planner-pills-container" style="margin-bottom:14px; flex-direction:column; align-items:stretch; display:${isExpanded ? 'flex' : 'none'};">
                             ${exerciseLogsHtml}
                         </div>
                         
@@ -921,8 +950,16 @@
                 `;
             });
 
-
             plannerDaysContainer.innerHTML = plannerHtml;
+        }
+
+        function toggleExpandDay(dayId) {
+            if (expandedDayIds.has(dayId)) {
+                expandedDayIds.delete(dayId);
+            } else {
+                expandedDayIds.add(dayId);
+            }
+            renderAll();
         }
 
         function handleSplitDaysChange(val) {
