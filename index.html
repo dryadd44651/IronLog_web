@@ -304,7 +304,7 @@
     </div>
 
     <!-- Core Javascript files -->
-    <script src="app.js"></script>
+    <script src="app.js?v=2"></script>
     <script>
         // Controller & DOM Binding
         let currentTab = 0;
@@ -513,7 +513,7 @@
                         : 'No exercises scheduled';
 
                     dayFocusHtml += `
-                        <div class="checklist-item ${isCompleted ? 'done' : ''}" style="cursor:default;">
+                        <div class="checklist-item ${isCompleted ? 'done' : ''}" onclick="navigateToDay('${day.id}')">
                             <div class="checklist-icon-wrap" style="color:var(--color-warning); background:rgba(245,158,11,0.1);">
                                 <i data-lucide="calendar"></i>
                             </div>
@@ -524,8 +524,8 @@
                                 </div>
                             </div>
                             <div class="checklist-action-status">
-                                <span>${isCompleted ? 'Done' : 'Incomplete'}</span>
-                                <i data-lucide="${isCompleted ? 'check-circle-2' : 'alert-circle'}"></i>
+                                <span>${isCompleted ? 'Done' : 'Train'}</span>
+                                <i data-lucide="${isCompleted ? 'check-circle-2' : 'chevron-right'}"></i>
                             </div>
                         </div>
                     `;
@@ -539,6 +539,12 @@
         function navigateToTrainGroup(groupId) {
             selectedMuscleGroupId = groupId;
             switchTab(1); // Jump to Train Log tab
+        }
+
+        function navigateToDay(dayId) {
+            expandedDayIds.clear();
+            expandedDayIds.add(dayId);
+            switchTab(2); // Jump to Day tab
         }
 
         function handleSkipWeek() {
@@ -1132,6 +1138,9 @@
                         </div>
                         <div class="settings-plan-actions">
                             ${!isCurrent ? `<button class="btn-secondary" onclick="selectPlanFromSettings('${plan.id}')" style="padding: 4px 8px; font-size:12px;">Select</button>` : ''}
+                            <button class="settings-action-icon-btn" onclick="handleCopyPlan('${plan.id}')" title="Copy Plan">
+                                <i data-lucide="copy"></i>
+                            </button>
                             <button class="settings-action-icon-btn" onclick="openRenamePlanModal('${plan.id}', '${escapeHtml(plan.name)}')">
                                 <i data-lucide="edit"></i>
                             </button>
@@ -1225,6 +1234,12 @@
         function handleCreatePlanPrompt() {
             const defaultName = "Plan " + new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             storeObj.createPlan(defaultName);
+            renderAll();
+        }
+
+        function handleCopyPlan(planId) {
+            console.log('handleCopyPlan called with', planId);
+            storeObj.copyPlan(planId);
             renderAll();
         }
 

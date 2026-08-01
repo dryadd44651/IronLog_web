@@ -761,6 +761,72 @@ class AppStore {
         this.selectPlan(newId);
     }
 
+    copyPlan(sourcePlanId) {
+        const sourcePlan = this.plans.find(p => p.id === sourcePlanId);
+        if (!sourcePlan) { console.error('copyPlan: source plan not found', sourcePlanId); return; }
+        const sourceData = this.planDataById[sourcePlanId];
+        if (!sourceData) { console.error('copyPlan: source data not found', sourcePlanId); return; }
+
+        const newId = crypto.randomUUID();
+        const newName = sourcePlan.name + ' (Copy)';
+        this.plans.push({ id: newId, name: newName });
+
+        // Deep clone the source plan data with fresh IDs for days
+        const clonedDays = (sourceData.days || []).map(day => ({
+            id: crypto.randomUUID(),
+            name: day.name,
+            exerciseIds: [...(day.exerciseIds || [])]
+        }));
+
+        // Clone active cycle
+        let clonedCycle = null;
+        let clonedCycleId = null;
+        if (sourceData.activeCycle) {
+            clonedCycleId = crypto.randomUUID();
+            const clonedIntensities = (sourceData.activeCycle.intensities || []).map(int => ({
+                id: crypto.randomUUID(),
+                muscleGroupId: int.muscleGroupId,
+                weekIndex: int.weekIndex,
+                intensity: int.intensity
+            }));
+            clonedCycle = {
+                id: clonedCycleId,
+                name: sourceData.activeCycle.name,
+                startDate: sourceData.activeCycle.startDate ? new Date(sourceData.activeCycle.startDate) : new Date(),
+                currentWeekIndex: sourceData.activeCycle.currentWeekIndex || 0,
+                intensities: clonedIntensities,
+                isCompleted: sourceData.activeCycle.isCompleted || false
+            };
+        }
+
+        // Clone exercise logs (carrying over custom set configurations but resetting completed flags)
+        const clonedLogs = (sourceData.exerciseLogs || []).map(log => {
+            const clonedSets = (log.sets || []).map(set => ({
+                id: crypto.randomUUID(),
+                isCompleted: false
+            }));
+            return {
+                id: crypto.randomUUID(),
+                exerciseId: log.exerciseId,
+                weekIndex: log.weekIndex,
+                cycleId: clonedCycleId || crypto.randomUUID(),
+                sets: clonedSets,
+                isCompleted: false
+            };
+        });
+
+        this.planDataById[newId] = {
+            enabledExerciseIds: [...(sourceData.enabledExerciseIds || [])],
+            activeCycle: clonedCycle,
+            exerciseLogs: clonedLogs,
+            daysCount: sourceData.daysCount || 3,
+            days: clonedDays
+        };
+
+        this.currentPlanId = newId;
+        this.saveData();
+    }
+
     renamePlan(id, newName) {
         const trimmed = newName.trim();
         if (!trimmed) return;
