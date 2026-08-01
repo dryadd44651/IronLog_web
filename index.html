@@ -304,7 +304,7 @@
     </div>
 
     <!-- Core Javascript files -->
-    <script src="app.js?v=2"></script>
+    <script src="app.js?v=12"></script>
     <script>
         // Controller & DOM Binding
         let currentTab = 0;
@@ -1238,8 +1238,10 @@
         }
 
         function handleCopyPlan(planId) {
-            console.log('handleCopyPlan called with', planId);
+            console.log('handleCopyPlan called with source plan id:', planId);
             storeObj.copyPlan(planId);
+            console.log('New Cloned Plan Data:', storeObj.currentPlanData);
+            alert("Plan copied successfully! The active cycle intensities (weekly weights) and customized set configurations have been copied.");
             renderAll();
         }
 
