@@ -670,12 +670,12 @@
 
                         log.sets.forEach((set, sIdx) => {
                             html += `
-                                    <div class="set-row">
+                                    <div class="set-row ${set.isCompleted ? 'completed' : ''}" onclick="toggleSetCompletion('${exercise.id}', '${log.id}', ${sIdx})">
                                         <div class="set-col-num">${sIdx + 1}</div>
                                         <div class="set-col-weight">${target.weight}</div>
                                         <div class="set-col-reps">${target.reps} reps</div>
                                         <div class="set-col-status">
-                                            <button class="set-checkbox-btn ${set.isCompleted ? 'completed' : ''}" onclick="toggleSetCompletion('${exercise.id}', '${log.id}', ${sIdx})">
+                                            <button class="set-checkbox-btn ${set.isCompleted ? 'completed' : ''}">
                                                 <i data-lucide="${set.isCompleted ? 'check-square' : 'square'}"></i>
                                             </button>
                                         </div>
@@ -845,12 +845,12 @@
 
                         log.sets.forEach((set, sIdx) => {
                             exerciseLogsHtml += `
-                                    <div class="set-row" style="font-size: 13px; height:24px;">
+                                    <div class="set-row ${set.isCompleted ? 'completed' : ''}" onclick="toggleSetCompletion('${exercise.id}', '${log.id}', ${sIdx})" style="font-size: 13px; padding: 4px 6px;">
                                         <div class="set-col-num">${sIdx + 1}</div>
                                         <div class="set-col-weight">${target.weight}</div>
                                         <div class="set-col-reps">${target.reps} reps</div>
                                         <div class="set-col-status">
-                                            <button class="set-checkbox-btn ${set.isCompleted ? 'completed' : ''}" onclick="toggleSetCompletion('${exercise.id}', '${log.id}', ${sIdx})" style="font-size:15px; padding:2px;">
+                                            <button class="set-checkbox-btn ${set.isCompleted ? 'completed' : ''}" style="font-size:15px; padding:2px;">
                                                 <i data-lucide="${set.isCompleted ? 'check-square' : 'square'}"></i>
                                             </button>
                                         </div>

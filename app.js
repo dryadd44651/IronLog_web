@@ -334,6 +334,7 @@ class AppStore {
 
         // Return virtual lazy log
         return {
+            id: crypto.randomUUID(),
             exerciseId: exercise.id,
             weekIndex: weekIndex,
             cycleId: cycleId,
