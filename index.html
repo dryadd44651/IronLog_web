@@ -343,6 +343,7 @@
             renderHeader();
             renderDashboard();
             renderTrain();
+            renderRoutinePlanner();
             renderExercises();
             renderSettings();
             lucide.createIcons();
@@ -655,9 +656,12 @@
                                             <i data-lucide="${intensityIcon}"></i> ${intensityLabel}
                                         </div>
                                     </div>
-                                    <button class="exercise-log-status-btn ${log.isCompleted ? 'completed' : ''}" onclick="toggleExerciseLogCompletion('${exercise.id}', '${log.id}')">
-                                        <i data-lucide="${log.isCompleted ? 'check-circle-2' : 'circle'}"></i>
-                                    </button>
+                                    <div style="display:flex; align-items:center; gap:6px;">
+                                        ${log.isCompleted ? '<span style="font-size:11px; font-weight:700; color:var(--color-success); background:rgba(16,185,129,0.15); padding:2px 8px; border-radius:12px; border:1px solid rgba(16,185,129,0.3);">Completed ✓</span>' : ''}
+                                        <button class="exercise-log-status-btn ${log.isCompleted ? 'completed' : ''}" onclick="toggleExerciseLogCompletion('${exercise.id}', '${log.id}')">
+                                            <i data-lucide="${log.isCompleted ? 'check-circle-2' : 'circle'}"></i>
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="set-table">
                                     <div class="set-row-header">
@@ -830,9 +834,12 @@
                                             <i data-lucide="${intensityIcon}"></i> ${intensityLabel}
                                         </div>
                                     </div>
-                                    <button class="exercise-log-status-btn ${log.isCompleted ? 'completed' : ''}" onclick="toggleExerciseLogCompletion('${exercise.id}', '${log.id}')" style="font-size: 18px; padding:2px;">
-                                        <i data-lucide="${log.isCompleted ? 'check-circle-2' : 'circle'}"></i>
-                                    </button>
+                                    <div style="display:flex; align-items:center; gap:6px;">
+                                        ${log.isCompleted ? '<span style="font-size:11px; font-weight:700; color:var(--color-success); background:rgba(16,185,129,0.15); padding:2px 8px; border-radius:12px; border:1px solid rgba(16,185,129,0.3);">Completed ✓</span>' : ''}
+                                        <button class="exercise-log-status-btn ${log.isCompleted ? 'completed' : ''}" onclick="toggleExerciseLogCompletion('${exercise.id}', '${log.id}')" style="font-size: 20px; padding:2px;">
+                                            <i data-lucide="${log.isCompleted ? 'check-circle-2' : 'circle'}"></i>
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="set-table" style="gap: 5px; margin-bottom: 10px;">
                                     <div class="set-row-header" style="font-size: 10px; padding-bottom: 2px;">
@@ -1425,12 +1432,7 @@
             renderAll();
         }
 
-        // Hook Tab 2 (Routine Planner) render into global renderAll()
-        const oldRenderAll = renderAll;
-        renderAll = function() {
-            oldRenderAll();
-            renderRoutinePlanner();
-        };
+
 
         // Helpers
         function escapeHtml(str) {

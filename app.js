@@ -569,18 +569,18 @@ class AppStore {
         }
         
         const data = this.planDataById[planId];
-        if (!data.daysCount || !data.days || data.days.length === 0) {
+        const days = data.days || [];
+        const hasExercisesInDays = days.some(d => d.exerciseIds && d.exerciseIds.length > 0);
+
+        if (!data.daysCount || days.length === 0 || !hasExercisesInDays) {
             data.daysCount = 3;
-            const enabledIds = data.enabledExerciseIds || [];
             
-            // Group exercises logically
+            // Group ALL global exercises logically across the 3 days
             const day1ExIds = [];
             const day2ExIds = [];
             const day3ExIds = [];
             
             this.globalExercises.forEach(ex => {
-                if (!enabledIds.includes(ex.id)) return;
-                
                 const group = this.globalMuscleGroups.find(g => g.id === ex.muscleGroupId);
                 const gName = group ? group.name.toLowerCase() : '';
                 
@@ -591,14 +591,14 @@ class AppStore {
                 } else if (gName.includes('legs')) {
                     day3ExIds.push(ex.id);
                 } else {
-                    day1ExIds.push(ex.id); // fallback
+                    day1ExIds.push(ex.id);
                 }
             });
 
             data.days = [
-                { id: crypto.randomUUID(), name: "Day 1 (Chest, Biceps, Core)", exerciseIds: day1ExIds },
-                { id: crypto.randomUUID(), name: "Day 2 (Back, Triceps, Shoulders)", exerciseIds: day2ExIds },
-                { id: crypto.randomUUID(), name: "Day 3 (Legs)", exerciseIds: day3ExIds }
+                { id: (days[0] && days[0].id) || crypto.randomUUID(), name: (days[0] && days[0].name) || "Day 1 (Chest, Biceps, Core)", exerciseIds: day1ExIds },
+                { id: (days[1] && days[1].id) || crypto.randomUUID(), name: (days[1] && days[1].name) || "Day 2 (Back, Triceps, Shoulders)", exerciseIds: day2ExIds },
+                { id: (days[2] && days[2].id) || crypto.randomUUID(), name: (days[2] && days[2].name) || "Day 3 (Legs)", exerciseIds: day3ExIds }
             ];
             
             this.syncEnabledExercises();
