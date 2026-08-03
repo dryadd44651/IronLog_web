@@ -1,31 +1,29 @@
-# Orchestration Plan — IronLog Web
+# Orchestration Plan — IronLog Web Secondary Audit & Autonomy Evaluation
 
 ## Overview
-Comprehensive QA audit, architectural storage review, and implementation refinement of IronLog Web app.
+Perform secondary deep audit, stress testing, edge-case validation, UI rendering responsiveness checks, cross-browser state integrity verification, and architectural background autonomy evaluation (`/goal` vs `/schedule`) on IronLog Web. Deliver `secondary_review_and_recommendations.md`.
 
 ## Milestones
 
-### Milestone 1: R1 QA Audit & Edge Cases
-- **Objective**: Thoroughly explore `app.js`, `index.html`, `app.css` to audit all features, identify edge cases, boundary values, empty states, corrupted JSON handling, split changes, etc.
-- **Output**: `qa_audit_report.md` in `/Users/howard/.gemini/antigravity/scratch/IronLogWeb`.
-- **Agents**: Explorers to investigate and produce `qa_audit_report.md`.
+### Milestone 1: Secondary Deep Audit & Empirical Stress Testing
+- **Objective**: Conduct exhaustive stress testing, edge-case validation, UI rendering responsiveness checks, DOM batching performance, heavy payload limits (10,000+ workouts/sets), and cross-browser state integrity verification (`storage` event, tab synchronization, concurrent writes).
+- **Agents**: `teamwork_preview_explorer` (Audit Specialist) & `teamwork_preview_challenger` (Empirical Stress Testing).
 
-### Milestone 2: R2 Architectural Logic & Storage Review
-- **Objective**: Analyze state flow, `localStorage` key `ironlog_data_v4`, data structures, redundancy, corruption risks, inefficiency.
-- **Output**: `architect_review.md` in `/Users/howard/.gemini/antigravity/scratch/IronLogWeb`.
-- **Agents**: Explorers to investigate and produce `architect_review.md`.
+### Milestone 2: Architectural & Maintainability Evaluation (`/goal` vs `/schedule`)
+- **Objective**: Evaluate codebase for long-term maintainability, background execution feasibility, automated test suite availability, state isolation, side-effect risks, and formulate clear recommendations on whether `/goal` (continuous background development) or `/schedule` (background health monitoring) should be enabled.
+- **Agents**: `teamwork_preview_explorer` (Software Architect).
 
-### Milestone 3: R3 Implementation Fixes & Refinements
-- **Objective**: Resolve all identified issues from M1 and M2 in `app.js`, `index.html`, `app.css`. Maintain visual excellence, zero console errors, robust state sync and JSON import/export handling.
-- **Agents**: Worker to implement fixes. Reviewers and Challengers to verify.
+### Milestone 3: Comprehensive Report Generation
+- **Objective**: Synthesize all M1 & M2 findings into a comprehensive, structured report `secondary_review_and_recommendations.md` at project root.
+- **Agent**: `teamwork_preview_worker` (Documentation Specialist).
 
 ### Milestone 4: Verification & Forensic Audit
-- **Objective**: Run full verification, Challenger stress testing, and Forensic Audit (`teamwork_preview_auditor`).
-- **Pass Criteria**: All tests pass, zero console errors, clean forensic audit verdict, complete compliance with user requirements.
+- **Objective**: Perform independent review, empirical stress verification, and forensic integrity audit on `secondary_review_and_recommendations.md` and codebase state.
+- **Agents**: `teamwork_preview_reviewer`, `teamwork_preview_challenger`, and `teamwork_preview_auditor`.
 
 ## Execution Strategy
-1. Dispatch Explorers to perform R1 QA Audit and R2 Architectural Review.
-2. Produce `qa_audit_report.md` and `architect_review.md`.
-3. Dispatch Worker to implement fixes for all identified bugs.
-4. Dispatch Reviewers, Challengers, and Forensic Auditor.
-5. Notify Sentinel on clean completion.
+1. Create metadata working directories for subagents.
+2. Dispatch Explorer & Challenger subagents for M1 and M2 in parallel.
+3. Synthesize findings and dispatch Worker for M3 report generation.
+4. Dispatch Reviewer, Challenger, and Forensic Auditor for M4.
+5. Notify Sentinel of completion.

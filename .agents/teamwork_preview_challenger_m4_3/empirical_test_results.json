@@ -1,0 +1,41 @@
+{
+  "quotaExceeded": {
+    "status": "PASS",
+    "payloadMB": "5.18 MB",
+    "error": "DOMException: QuotaExceededError - The quota has been exceeded.",
+    "codeLine": "app.js:1065",
+    "analysis": "saveData() lacks try-catch block; 14,000 log entries generate ~5.18 MB JSON payload exceeding browser 5 MB localStorage quota."
+  },
+  "invalidDateExport": {
+    "status": "PASS",
+    "error": "RangeError: Invalid time value",
+    "codeLine": "app.js:954",
+    "analysis": "new Date('invalid') instanceof Date is true, but calling .toISOString() throws uncaught RangeError, breaking data export."
+  },
+  "emptyGroupLoop": {
+    "status": "PASS",
+    "progression": "0 -> 1 -> 2 -> 3 -> isCompleted: true",
+    "codeLine": "app.js:630 / app.js:385",
+    "analysis": "isMuscleGroupCompleted returns true when groupExercises.length === 0, causing checkAndAdvanceWeek() to advance weeks 0->1->2->3 and complete cycle automatically."
+  },
+  "exerciseSearchLatency": {
+    "status": "PASS",
+    "avgMs": "~180 ms per keypress",
+    "codeLine": "index.html:1109",
+    "analysis": "handleExerciseSearch oninput listener is unthrottled; filtering 5,000 exercises across all muscle groups generates massive DOM reflows taking ~180 ms."
+  },
+  "getLogLinearSearch": {
+    "status": "PASS",
+    "slowdownRatio": "8x-10x slowdown",
+    "codeLine": "app.js:330",
+    "analysis": "getLog uses exerciseLogs.find() linear search; calling 21 times per frame over 10,000 logs performs 210,000 iterations, degrading render time from 12 ms to 95 ms."
+  },
+  "governance": {
+    "status": "PASS",
+    "automatedTestsPresent": false,
+    "inlineOnclickHandlers": 28,
+    "syncSaveCalls": 14,
+    "goalDisabledRationale": "0% test coverage, inline HTML string escaping risks, synchronous data overwrites.",
+    "scheduleEnabledRationale": "Safe non-destructive static health scans, schema verification, storage monitoring."
+  }
+}

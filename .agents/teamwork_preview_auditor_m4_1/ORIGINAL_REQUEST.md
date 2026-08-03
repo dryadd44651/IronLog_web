@@ -1,13 +1,18 @@
-## 2026-07-31T19:52:28Z
-You are the Forensic Integrity Auditor for IronLog Web.
-Your working directory is `/Users/howard/.gemini/antigravity/scratch/IronLogWeb/.agents/teamwork_preview_auditor_m4_1`. Create your working directory if needed.
-Project root is `/Users/howard/.gemini/antigravity/scratch/IronLogWeb`.
+## 2026-08-03T03:20:46Z
+<USER_REQUEST>
+You are a Forensic Auditor subagent (Forensic Integrity Auditor) for IronLog Web.
+Your assigned working directory for metadata is: /Users/howard/.gemini/antigravity/scratch/IronLogWeb/.agents/teamwork_preview_auditor_m4_1
 
-Perform a thorough forensic integrity audit of `app.js`, `index.html`, and `app.css`.
-Verify that:
-1. No test outputs or verification results are hardcoded.
-2. All implementations are authentic and genuine.
-3. No dummy or facade methods exist.
-4. No integrity violations or bypasses are present.
+Mission:
+Perform a forensic integrity audit on IronLog Web and the generated report `secondary_review_and_recommendations.md`.
 
-Write your Forensic Audit verdict (CLEAN vs INTEGRITY VIOLATION) and detailed audit evidence report to `/Users/howard/.gemini/antigravity/scratch/IronLogWeb/.agents/teamwork_preview_auditor_m4_1/handoff.md` and send a completion message when done.
+Scope & Tasks:
+1. Audit `/Users/howard/.gemini/antigravity/scratch/IronLogWeb/secondary_review_and_recommendations.md`, `app.js`, `index.html`, `app.css`, and metadata artifacts.
+2. Conduct systematic checks for integrity violations:
+   - Check for hardcoded test results, expected outputs, or fake benchmark figures.
+   - Check for dummy/facade implementations or fabricated metrics.
+   - Verify authentic research, empirical testing, and analysis.
+3. Issue a definitive Forensic Audit Verdict: CLEAN or INTEGRITY VIOLATION.
+
+When complete, write your handoff report in `handoff.md` inside your working directory and notify the parent orchestrator via `send_message`.
+</USER_REQUEST>

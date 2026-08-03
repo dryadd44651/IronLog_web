@@ -1,20 +1,12 @@
-## 2026-07-31T19:49:21Z
-<USER_REQUEST>
-You are the QA Audit Specialist for IronLog Web.
-Your working directory is `/Users/howard/.gemini/antigravity/scratch/IronLogWeb/.agents/teamwork_preview_explorer_m1_1`. Create your working directory if needed.
-Project root is `/Users/howard/.gemini/antigravity/scratch/IronLogWeb`.
+## 2026-08-03T03:15:55Z
+Conduct a secondary deep audit, stress testing, edge-case validation, UI rendering responsiveness checks, and cross-browser state integrity verification on IronLog Web.
 
-Read `PROJECT.md`, `app.js`, `index.html`, and `app.css` in project root.
-Conduct a comprehensive QA Audit & Edge Case analysis per requirement R1.
-Specifically audit and test:
-1. Boundary values for sets (0 sets, negative values, extreme numbers, decimal weights/reps, NaN, blank inputs).
-2. Empty states (plans with no exercises, days with no exercises, resetting/clearing data, initial fresh launch without localStorage).
-3. Import/Export stability (importing corrupted/malformed JSON, missing keys, empty files, legacy schema versions, special characters/script tags, re-importing exported files).
-4. State synchronization when changing splits, renaming days, or advancing weeks (verifying whether workout history is preserved, active day indicators stay accurate, week incrementing works correctly across split changes).
-5. UI & Console behavior: any broken event listeners, missing elements, console errors or warnings.
+Scope & Tasks:
+1. Examine `index.html`, `app.js`, and `app.css` in `/Users/howard/.gemini/antigravity/scratch/IronLogWeb`.
+2. Inspect prior reports `qa_audit_report.md` and `architect_review.md` to see what issues were previously identified and fixed, and look for any remaining or subtle regressions.
+3. Edge-Case Validation: Check boundary conditions (empty log states, extreme payload sizes, special characters in workout notes/exercise names, NaN or negative weight/reps values, floating point numbers, timezone/date parsing edges, missing schema fields).
+4. UI Rendering Responsiveness & DOM Performance: Analyze DOM reflows/repaints during log rendering, search filtering, chart rendering, plate calculator math, modal openings, and large dataset rendering (e.g. 10,000+ entries). Check for unthrottled event listeners, inefficient queries, or re-render loops.
+5. Cross-Browser & Cross-Tab State Integrity: Analyze `window.addEventListener('storage', ...)` sync mechanisms, multi-tab write concurrency, race conditions during tab focus/blur, IndexedDB fallback/localStorage quota limits, and state serialization robustness.
+6. Write a comprehensive findings report to `/Users/howard/.gemini/antigravity/scratch/IronLogWeb/.agents/teamwork_preview_explorer_m1_1/audit_findings.md`. Include a heartbeat header `Last visited: [timestamp]` in your `progress.md`.
 
-Output requirement:
-Write a comprehensive, structured QA audit report to `/Users/howard/.gemini/antigravity/scratch/IronLogWeb/qa_audit_report.md`.
-Also write your metadata handoff report to `/Users/howard/.gemini/antigravity/scratch/IronLogWeb/.agents/teamwork_preview_explorer_m1_1/handoff.md`.
-Send a completion message when finished.
-</USER_REQUEST>
+When complete, write your handoff report in `handoff.md` inside your working directory and notify the parent orchestrator via `send_message`.
