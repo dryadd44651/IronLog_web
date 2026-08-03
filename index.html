@@ -346,7 +346,9 @@
             renderRoutinePlanner();
             renderExercises();
             renderSettings();
-            lucide.createIcons();
+            if (window.lucide && typeof lucide.createIcons === 'function') {
+                lucide.createIcons();
+            }
         }
 
         // Header view sync
@@ -746,7 +748,7 @@
             const log = storeObj.getLog(ex, cycle.currentWeekIndex);
             
             log.sets[setIndex].isCompleted = !log.sets[setIndex].isCompleted;
-            log.isCompleted = log.sets.every(s => s.isCompleted);
+            log.isCompleted = Boolean(log.sets && log.sets.length > 0 && log.sets.every(s => s.isCompleted));
             
             storeObj.updateLog(log);
             storeObj.checkAndAdvanceWeek();
@@ -1065,7 +1067,7 @@
                                 <i data-lucide="${groupIcon}" style="color:var(--color-accent)"></i>
                                 <span>${escapeHtml(group.name)}</span>
                             </div>
-                            <button class="library-section-add-btn" onclick="openAddExerciseModal('${group.id}', '${escapeHtml(group.name)}')">
+                            <button class="library-section-add-btn" onclick="openAddExerciseModal('${group.id}')">
                                 <i data-lucide="plus-circle"></i>
                             </button>
                         </div>
@@ -1081,7 +1083,7 @@
                                 <button class="exercise-enable-toggle ${isEnabled ? 'enabled' : ''}" onclick="toggleExerciseEnabledInPlan('${exercise.id}', ${isEnabled})">
                                     <i data-lucide="${isEnabled ? 'check-circle-2' : 'circle'}"></i>
                                 </button>
-                                <div class="exercise-details-row" onclick="openEditExerciseModal('${exercise.id}', '${escapeHtml(exercise.name)}', ${exercise.personalRecord})">
+                                <div class="exercise-details-row" onclick="openEditExerciseModal('${exercise.id}')">
                                     <div class="exercise-name">${escapeHtml(exercise.name)}</div>
                                     <div style="display:flex; align-items:center; gap:8px;">
                                         <div class="exercise-pr-display">
@@ -1107,7 +1109,9 @@
         function handleExerciseSearch() {
             exerciseSearchText = document.getElementById('exercise-search').value;
             renderExercises();
-            lucide.createIcons();
+            if (window.lucide && typeof lucide.createIcons === 'function') {
+                lucide.createIcons();
+            }
         }
 
         function toggleExerciseEnabledInPlan(exerciseId, currentlyEnabled) {
@@ -1141,10 +1145,10 @@
                             <button class="settings-action-icon-btn" onclick="handleCopyPlan('${plan.id}')" title="Copy Plan">
                                 <i data-lucide="copy"></i>
                             </button>
-                            <button class="settings-action-icon-btn" onclick="openRenamePlanModal('${plan.id}', '${escapeHtml(plan.name)}')">
+                            <button class="settings-action-icon-btn" onclick="openRenamePlanModal('${plan.id}')">
                                 <i data-lucide="edit"></i>
                             </button>
-                            <button class="settings-action-icon-btn btn-delete" ${storeObj.plans.length <= 1 ? 'disabled style="opacity:0.3; cursor:not-allowed;"' : ''} onclick="openDeletePlanModal('${plan.id}', '${escapeHtml(plan.name)}')">
+                            <button class="settings-action-icon-btn btn-delete" ${storeObj.plans.length <= 1 ? 'disabled style="opacity:0.3; cursor:not-allowed;"' : ''} onclick="openDeletePlanModal('${plan.id}')">
                                 <i data-lucide="trash-2"></i>
                             </button>
                         </div>
@@ -1177,7 +1181,7 @@
                                 <span>${escapeHtml(group.name)}</span>
                             </div>
                             <div style="display:flex; align-items:center; gap:12px;">
-                                <button class="settings-action-icon-btn" onclick="openRenameGroupModal('${group.id}', '${escapeHtml(group.name)}')">
+                                <button class="settings-action-icon-btn" onclick="openRenameGroupModal('${group.id}')">
                                     <i data-lucide="edit"></i>
                                 </button>
                                 <button class="settings-action-icon-btn btn-delete" onclick="handleDeleteGroup('${group.id}')">
@@ -1363,7 +1367,9 @@
         }
 
         // 2. Add Exercise Modal
-        function openAddExerciseModal(groupId, groupName) {
+        function openAddExerciseModal(groupId) {
+            const group = storeObj.muscleGroups.find(g => g.id === groupId);
+            const groupName = group ? group.name : '';
             document.getElementById('input-add-exercise-group-id').value = groupId;
             document.getElementById('label-add-exercise-group').value = groupName;
             document.getElementById('input-exercise-name').value = '';
@@ -1374,7 +1380,11 @@
         function submitAddExercise() {
             const groupId = document.getElementById('input-add-exercise-group-id').value;
             const name = document.getElementById('input-exercise-name').value;
-            const pr = parseFloat(document.getElementById('input-exercise-pr').value);
+            let pr = parseFloat(document.getElementById('input-exercise-pr').value);
+
+            if (isNaN(pr) || pr <= 0) {
+                pr = 100.0;
+            }
 
             if (name.trim()) {
                 storeObj.addExercise(name, groupId, pr);
@@ -1384,21 +1394,26 @@
         }
 
         // 3. Edit Exercise Modal
-        function openEditExerciseModal(exerciseId, name, pr) {
-            document.getElementById('input-edit-exercise-id').value = exerciseId;
-            document.getElementById('input-edit-exercise-name').value = name;
-            document.getElementById('input-edit-exercise-pr').value = Math.round(pr);
+        function openEditExerciseModal(exerciseId) {
+            const exercise = storeObj.exercises.find(e => e.id === exerciseId);
+            if (!exercise) return;
+            document.getElementById('input-edit-exercise-id').value = exercise.id;
+            document.getElementById('input-edit-exercise-name').value = exercise.name;
+            document.getElementById('input-edit-exercise-pr').value = Math.round(exercise.personalRecord);
             openModal('modal-edit-exercise');
         }
 
         function submitEditExercise() {
             const id = document.getElementById('input-edit-exercise-id').value;
             const name = document.getElementById('input-edit-exercise-name').value;
-            const pr = parseFloat(document.getElementById('input-edit-exercise-pr').value);
+            let pr = parseFloat(document.getElementById('input-edit-exercise-pr').value);
 
             if (name.trim()) {
                 const ex = storeObj.exercises.find(e => e.id === id);
                 if (ex) {
+                    if (isNaN(pr) || pr <= 0) {
+                        pr = ex.personalRecord && !isNaN(ex.personalRecord) && ex.personalRecord > 0 ? ex.personalRecord : 100.0;
+                    }
                     const updated = { ...ex, name: name, personalRecord: pr };
                     storeObj.updateExercise(updated);
                     closeModal();
@@ -1426,9 +1441,11 @@
         }
 
         // 5. Rename Plan Modal
-        function openRenamePlanModal(planId, name) {
-            document.getElementById('input-rename-plan-id').value = planId;
-            document.getElementById('input-rename-plan-name').value = name;
+        function openRenamePlanModal(planId) {
+            const plan = storeObj.plans.find(p => p.id === planId);
+            if (!plan) return;
+            document.getElementById('input-rename-plan-id').value = plan.id;
+            document.getElementById('input-rename-plan-name').value = plan.name;
             openModal('modal-rename-plan');
         }
 
@@ -1444,9 +1461,11 @@
         }
 
         // 6. Rename Group Modal
-        function openRenameGroupModal(groupId, name) {
-            document.getElementById('input-rename-group-id').value = groupId;
-            document.getElementById('input-rename-group-name').value = name;
+        function openRenameGroupModal(groupId) {
+            const group = storeObj.muscleGroups.find(g => g.id === groupId);
+            if (!group) return;
+            document.getElementById('input-rename-group-id').value = group.id;
+            document.getElementById('input-rename-group-name').value = group.name;
             openModal('modal-rename-group');
         }
 
@@ -1473,7 +1492,9 @@
         }
 
         // 8. Delete Plan Modal
-        function openDeletePlanModal(planId, name) {
+        function openDeletePlanModal(planId) {
+            const plan = storeObj.plans.find(p => p.id === planId);
+            const name = plan ? plan.name : '';
             document.getElementById('input-delete-plan-id').value = planId;
             document.getElementById('label-delete-plan-text').textContent = `Are you sure you want to delete "${name}"? This will remove all its cycle records and logs.`;
             openModal('modal-delete-plan');
